@@ -12,8 +12,9 @@ import numpy as np
 ''' ------- DEFINIÇÃO DO PROBLEMA ------- '''
 dados_entrada = pd.read_csv('dados_entrada_retirando_bikes.csv', index_col=['tempo'])
 prob = pl.LpProblem("otimizacao_V2G", pl.LpMinimize)
+
 solver = pl.PULP_CBC_CMD() # pl.SCIP_CMD()
-# Solver Disponívels
+# Solver Disponívels (Livres)
 # ['PULP_CBC_CMD', 'MIPCL_CMD', 'SCIP_CMD']
 # Solver Possíveis
 # ['GLPK_CMD', 'PYGLPK', 'CPLEX_CMD', 'CPLEX_PY', 'CPLEX_DLL', 'GUROBI', 
@@ -198,7 +199,7 @@ for k in dados_entrada.index:
         # Chegou agora, então leitura
         elif dados_entrada.loc[k,'cx_bike_{bike}'.format(bike=bike)] == 1 and dados_entrada.loc[k-1,'cx_bike_{bike}'.format(bike=bike)] == 0:
             prob += soc_bike[bike][k] == dados_entrada.loc[k,'soc_bike_{bike}'.format(bike=bike)] # Leitura do protocolo Modbus
-        # Já estava conectada
+        # Já estava conectada, então o algoritmo tem liberdade de controle
         else:
             prob += soc_bike[bike][k] ==  soc_bike[bike][k-1] + (p_ch_bike1[bike][k-1] -
                                                      p_dc_bike1[bike][k-1])*ts/e_total_bat_bike
@@ -207,7 +208,7 @@ for k in dados_entrada.index:
         prob += p_ch_bike1[bike][k] == eff_conv_w * p_ch_bike2[bike][k]
         prob += p_dc_bike2[bike][k] == eff_conv_w * p_dc_bike1[bike][k]
 
-    # Pega o soc_min_otm_bike
+    # Pega o soc_min_otm_bike (Sugestao do Henry)
     # if k > 0:
     #     if (soc_bike[k] <= soc_min_otm_bike[k-1]):
     #         prob += soc_min_otm_bike[k] == soc_bike[k]
@@ -350,8 +351,8 @@ axs1[num_graf].set_xticks([0,5,6,8,10,12,16,17,18,20,21,22,25])
 # axs1[num_graf].set_yticks([-100,0,200,400,500])
 # axs1[num_graf].set_xticks([0,5,6,8,10,12,16,17,18,20,21,22,25])
 
-# name_figure = "imagens_testes/220419_penalidade_soc_{}.png".format(peso_soc_bike)
-# plt.savefig(name_figure, format="png", dpi=400)
+name_figure = "teste1.png"
+plt.savefig(name_figure, format="png", dpi=400)
 
 ''' Só as bikes '''
 # plot2 = plt.figure(2)
@@ -369,6 +370,10 @@ fig2,axs2 = plt.subplots(1)
 plt.step(time_array/6, somatorio_p_rede,c='#d62728',label='somatorio_p_rede [kWh]')
 plt.legend(loc='lower right',prop={'size': 10})
 plt.grid()
+
+name_figure = "teste2.png"
+plt.savefig(name_figure, format="png", dpi=400)
+
 
 ''' PLOTAR '''
 plt.show()
