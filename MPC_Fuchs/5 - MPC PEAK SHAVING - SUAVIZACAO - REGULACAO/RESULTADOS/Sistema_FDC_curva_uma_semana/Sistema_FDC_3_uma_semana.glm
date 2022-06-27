@@ -1,0 +1,4634 @@
+//*****************************************************************************//
+//-------------------------- SISTEMA FAXINAL DO CÉU ---------------------------//
+//*****************************************************************************//
+// ALIMENTADORES PIQUIRI E SANTA MARIA
+// SISTEMA DE MEDIA TENSÃO
+
+//-----------------------------------------------------------------------------//
+#set iteration_limit=100000;
+
+clock {
+	//timezone EST+5EDT;
+	starttime '2017-11-03 0:00:00';
+	stoptime '2017-11-09 23:50:00';
+}
+
+module powerflow {
+	solver_method NR;
+}
+
+module generators;
+module tape;
+
+//************************** LINHA DE TRANSMISSÃO **********************//
+
+object node { 
+      name barra_Rede_principal;
+      phases "ABC";
+      bustype SWING;
+      voltage_A 19918.5+0d;
+      voltage_B 19918.5-120d;
+      voltage_C 19918.5+120d;
+      nominal_voltage 19918.5;
+	 
+} 
+
+// CONFIGURAÇÃO DOS SEGMENTOS DE LINHA
+
+object overhead_line_conductor { // CABO 2/0 AWG - CABO ALUMINIO
+	name cabo_linha_transmissao; 
+	geometric_mean_radius 0.0125;
+	diameter 0.41 in; // (10,50 mm)
+	resistance 0.683; // (0,427 ohm/km) 
+}
+
+object line_spacing { // ESPAÇAMENTO ENTRE OS CONDUTORES - FASES ABC
+	name esp_cabos_linha_transmissao;
+	distance_AB 1.96;
+	distance_AC 6.23;
+	distance_BC 4.26;
+	distance_AE 42.6;
+	distance_BE 42.6;
+	distance_CE 42.6;
+}
+
+object line_configuration { // CABO 2/0 AWG - ALUMINIO - FASES ABC
+	name confg_linha_transmissao;
+	conductor_A cabo_linha_transmissao;
+	conductor_B cabo_linha_transmissao;
+	conductor_C cabo_linha_transmissao;
+	spacing esp_cabos_linha_transmissao;
+}
+
+//object line_configuration { // Para os dados da COPEL
+	 //name config_CC;
+	 //z11 9.79+248.47j;
+     //z12 -4.89+165.90j;
+     //z13 -4.89+165.90j;
+     //z21 -4.89+165.90j;
+     //z22 9.79+248.47j;
+     //z23 -4.89+165.90j;
+     //z31 -4.89+165.90j;
+     //z32 -4.89+165.90j;
+     //z33 9.79+248.47j;
+//}
+
+
+object line_configuration { // Para Icc3 = 1670 e Icc1 = 560
+	 name config_CC_1;
+	 z11 9.8977+8.1990j;
+     z12 9.8128+3.4289j;
+     z13 9.8128+3.4289j;
+     z21 9.8127+3.4288j;
+     z22 9.8976+8.1990j;
+     z23 9.8127+3.4288j;
+     z31 9.8127+3.4288j;
+     z32 9.8127+3.4288j;
+     z33 9.8976+8.1990j;
+}
+
+object line_configuration { // Para Icc3 = 5900 e Icc1 = 3200
+	 name config_CC_2;
+	 z11 1.4320+1.6223j;
+     z12 1.4080+0.2721j;
+     z13 1.4080+0.2721j;
+     z21 1.4080+0.2721j;
+     z22 1.4320+1.6223j;
+     z23 1.4080+0.2721j;
+     z31 1.4080+0.2721j;
+     z32 1.4080+0.2721j;
+     z33 1.4320+1.6223j;
+}
+
+object line_configuration { // Para X/R = 5.20
+	 name config_CC_3;
+	 z11 16.41+251.28j;
+     z12 0.28+167.35j;
+     z13 0.28+167.35j;
+     z21 0.28+167.35j;
+     z22 16.41+251.28j;
+     z23 0.28+167.35j;
+     z31 0.28+167.35j;
+     z32 0.28+167.35j;
+     z33 16.41+251.28j;
+}
+
+object overhead_line { 
+     phases "ABC";
+     name linha_de_transmissao;
+     from barra_Rede_principal;
+     to barra_1;
+	 length 5280; // (5280 pés = 1 Milha)
+     configuration config_CC_3;
+}
+
+
+//************************** SUBESTAÇÃO *******************************//
+
+object node { 
+      name barra_1;
+      phases "ABC";
+      voltage_A 19918.5+0d;
+      voltage_B 19918.5-120d;
+      voltage_C 19918.5+120d;
+      nominal_voltage 19918.5;
+	 
+} 
+
+// CONFIGURAÇÃO DO TRANSFORMADOR DA SUBESTAÇÃO
+object transformer_configuration {
+	name CONFG_TRAFO_SUB;
+	connect_type DELTA_DELTA;
+  	install_type PADMOUNT;
+  	power_rating 5700;
+  	primary_voltage 34500;
+  	secondary_voltage 13800;
+  	resistance 0.011;
+  	reactance 0.02;
+}
+
+object transformer {
+  	phases "ABC";
+  	name TRAFO_SUB;
+  	from barra_1;
+  	to medidor_SE;
+  	configuration CONFG_TRAFO_SUB;
+}
+
+object meter {     
+    name medidor_SE;     
+    phases ABC;
+    object recorder{
+		file Medidor_potencia_SE.csv;
+		property measured_real_power, measured_reactive_power;
+		interval 600;
+	};			
+    nominal_voltage 7967.4; 
+	  
+} 
+
+//------ LINHA ENTRE: MEDIDOR_SE E A BARRA DE SAÍDA DA SE -------------//
+
+object overhead_line { // LINHA_1
+     phases "ABC";
+     name linha_med_SE_barra_2;
+     from medidor_SE;
+     to barra_2;
+     length 32.8; //(10 m)
+     configuration confg_linha_1;
+}
+
+object node { 
+     name barra_2;
+     phases "ABC";
+     voltage_A 7967.4+0d;
+     voltage_B 7967.4-120d;
+     voltage_C 7967.4+120d;
+     nominal_voltage 7967.4; 
+}
+
+
+//------ CONEXÃO DO PV E BATERIAS ----------------------------------------//
+
+object overhead_line { 
+     phases "ABC";
+     name linha_BAT_1;
+     from barra_2;
+     to barra_BAT_1; 
+     length 32.8; //(10 m)
+     configuration confg_linha_1;
+}
+
+object node { 
+     name barra_BAT_1;
+     phases "ABC";
+     voltage_A 7967.4+0d;
+     voltage_B 7967.4-120d;
+     voltage_C 7967.4+120d;
+     nominal_voltage 7967.4; 
+}
+
+object switch {
+	name chave_BAT;
+	phases ABC;
+	from barra_BAT_1;
+	to barra_BAT_2;
+	status CLOSED;
+	}
+
+object node { 
+     name barra_BAT_2;
+     phases "ABC";
+     voltage_A 7967.4+0d;
+     voltage_B 7967.4-120d;
+     voltage_C 7967.4+120d;
+     nominal_voltage 7967.4; 
+}
+
+object overhead_line { 
+     phases "ABC";
+     name linha_BAT_2;
+     from barra_BAT_2;
+     to medidor_BAT;
+     length 3.2; //(1 m)
+     configuration confg_linha_1;
+}
+
+object meter {     
+    name medidor_BAT;     
+    phases ABC;  
+    object recorder{
+		file Medidor_potencia_inverosr_bateria.txt;
+		property measured_real_power, measured_reactive_power;
+		interval 600;
+	};				
+    nominal_voltage 7967.4; 
+	  
+} 
+
+
+//-------------- SISTEMA DE ARMAZENAMENTO ---------------------//
+
+object inverter {
+      name inversor_bateria;
+      generator_status ONLINE;
+      inverter_type FOUR_QUADRANT;
+      four_quadrant_control_mode CONSTANT_PQ;
+	  parent medidor_BAT; 
+      rated_power 83000;		//Per phase rating
+	  inverter_efficiency 0.96;
+	  max_discharge_rate 250000;
+	  max_charge_rate 250000;
+	  object player {                    
+		file entrada_P_saida_inv_bat.txt;
+		property P_Out;
+	  };
+	  object player {                    
+		file entrada_Q_saida_inv_bat.txt;
+		property Q_Out;
+	};
+}
+object battery {
+	name bateria;
+	parent inversor_bateria;
+	use_internal_battery_model true;
+	battery_type LI_ION;
+	rated_power 250000;
+	nominal_voltage 120;
+	battery_capacity 560000;
+	round_trip_efficiency 1;
+	state_of_charge 0.20614012;
+	generator_mode SUPPLY_DRIVEN;
+}
+
+//-------------- SISTEMA SOLAR -----------------------------//
+
+object overhead_line { 
+     phases "ABC";
+     name linha_PV_1;
+     from barra_2;
+     to barra_PV_1; 
+     length 32.8; //(10 m)
+     configuration confg_linha_1;
+}
+
+object node { 
+     name barra_PV_1;
+     phases "ABC";
+     voltage_A 7967.4+0d;
+     voltage_B 7967.4-120d;
+     voltage_C 7967.4+120d;
+     nominal_voltage 7967.4; 
+}
+
+object switch {
+	name chave_PV;
+	phases ABC;
+	from barra_PV_1;
+	to barra_PV_2;
+	status CLOSED;
+}
+
+object node { 
+     name barra_PV_2;
+     phases "ABC";
+     voltage_A 7967.4+0d;
+     voltage_B 7967.4-120d;
+     voltage_C 7967.4+120d;
+     nominal_voltage 7967.4; 
+}
+
+object overhead_line { 
+     phases "ABC";
+     name linha_PV_2;
+     from barra_PV_2;
+     to medidor_PV;
+     length 3.2; //(1 m)
+     configuration confg_linha_1;
+}
+
+object meter {     
+    name medidor_PV;     
+    phases ABC; 
+    object recorder{
+		file Medidor_potencia_inverosr_PV.txt;
+		property measured_real_power, measured_reactive_power;
+		interval 600;
+	};				    
+    nominal_voltage 7967.4; 
+	  
+} 
+
+//-------------- SISTEMA SOLAR --------------------------//
+
+object inverter {
+      name inversor_PV;
+      generator_status ONLINE;
+      inverter_type FOUR_QUADRANT;
+      four_quadrant_control_mode CONSTANT_PQ;
+	  parent medidor_PV; 
+      rated_power 83000;		//Per phase rating
+	  inverter_efficiency 0.95;
+	  max_discharge_rate 250000;
+	  max_charge_rate 250000;
+	  object player {                    
+		file Curva_Potencia_PV.txt;
+		property P_Out;
+	  };
+	  object player {                    
+		file Curva_Q_PV.txt;
+		property Q_Out;
+	};
+}
+
+object solar {
+    generator_mode SUPPLY_DRIVEN;
+    generator_status ONLINE;
+    panel_type SINGLE_CRYSTAL_SILICON;
+    efficiency 0.2;
+    parent inversor_PV;
+    area 25000;
+}
+
+//****************** CONFIGURAÇÃO DOS SEGMENTOS DE LINHA DE DISTRIBUIÇÃO ******************//
+
+object overhead_line_conductor { // CABO 2/0 AWG - CABO ALUMINIO
+	name cabo_linha_1; 
+	geometric_mean_radius 0.0125;
+	diameter 0.41 in; // (10,50 mm)
+	resistance 0.683; // (0,427 ohm/km) 
+}
+
+object overhead_line_conductor { // CABO 2 AWG - CABO ALUMINIO
+	name cabo_linha_2; 
+	geometric_mean_radius 0.0088;
+	diameter 0.29 in; // (7.41 mm)
+	resistance 1.36; // (0,85 ohm/km) 
+}
+
+object overhead_line_conductor { // CABO 4 AWG - CABO ALUMINIO COM ALMA DE AÇO
+	name cabo_linha_3; 
+	geometric_mean_radius 0.0088;
+	diameter 0.25 in; // (6.35 mm)
+	resistance 2.164; // (1.352 ohm/km) 
+}
+
+object overhead_line_conductor { // CABO 4 AWG - CABO ALUMINIO 
+	name cabo_linha_4; 
+	geometric_mean_radius 0.0088;
+	diameter 0.23 in; // (5.88 mm)
+	resistance 2.180; // (1.363 ohm/km) 
+}
+
+object overhead_line_conductor { // CABO 7 AWG - CABO ALUMINIO  
+	name cabo_linha_5; 
+	geometric_mean_radius 0.0055;
+	diameter 0.17 in; // (4.49 mm)
+	resistance 4.350; // (2.719 ohm/km) 
+}
+
+object line_configuration { // CABO 2/0 AWG - ALUMINIO - FASES ABC
+	name confg_linha_1;
+	conductor_A cabo_linha_1;
+	conductor_B cabo_linha_1;
+	conductor_C cabo_linha_1;
+	spacing esp_cabos_1;
+}
+
+object line_configuration { // CABO 2 AWG - ALUMINIO - FASES ABC
+	name confg_linha_2;
+	conductor_A cabo_linha_2;
+	conductor_B cabo_linha_2;
+	conductor_C cabo_linha_2;
+	spacing esp_cabos_1;
+}
+
+object line_configuration { // CABO 4 AWG - ALUMINIO COM ALMA DE AÇO - FASES ABC
+	name confg_linha_3;
+	conductor_A cabo_linha_3;
+	conductor_B cabo_linha_3;
+	conductor_C cabo_linha_3;
+	spacing esp_cabos_1;
+}
+
+object line_configuration { // CABO 4 AWG - ALUMINIO - FASES ABC 
+	name confg_linha_4;
+	conductor_A cabo_linha_4;
+	conductor_B cabo_linha_4;
+	conductor_C cabo_linha_4;
+	spacing esp_cabos_1;
+}
+
+object line_configuration { // CABO 7 AWG - ALUMINIO - FASES AC
+	name confg_linha_5;
+	conductor_A cabo_linha_5;
+	conductor_C cabo_linha_5;
+	spacing esp_cabos_2;
+}
+
+object line_spacing { // ESPAÇAMENTO ENTRE OS CONDUTORES - FASES ABC
+	name esp_cabos_1;
+	distance_AB 1.96;
+	distance_AC 6.23;
+	distance_BC 4.26;
+	distance_AE 42.6;
+	distance_BE 42.6;
+	distance_CE 42.6;
+}
+
+object line_spacing { // ESPAÇAMENTO ENTRE OS CONDUTORES - FASES AC
+	name esp_cabos_2;
+	distance_AC 6.22;
+	distance_AE 42.6;
+	distance_CE 42.6;
+}
+
+
+
+//****************** CONFIGURAÇÃO DOS TRANSFORMADORES DE DISTRIBUIÇÃO ******************//
+
+	object transformer_configuration { // TRAFO TRIFASICO 75 KVA
+	name config_1;
+	connect_type DELTA_GWYE;
+  	install_type POLETOP;
+  	power_rating 75;
+  	primary_voltage 13800;
+  	secondary_voltage 220;
+  	resistance 0.008876;
+  	reactance 0.013312;
+}
+
+object transformer_configuration { // TRAFO TRIFASICO 30 KVA
+	name config_2;
+	connect_type DELTA_GWYE;
+  	install_type POLETOP;
+  	power_rating 30;
+  	primary_voltage 13800;
+  	secondary_voltage 220;
+  	resistance 0.008876;
+  	reactance 0.013312;
+}
+	
+object transformer_configuration { // TRAFO TRIFASICO 45 KVA
+	name config_3;
+	connect_type DELTA_GWYE;
+  	install_type POLETOP;
+  	power_rating 45;
+  	primary_voltage 13800;
+  	secondary_voltage 220;
+  	resistance 0.009429;
+  	reactance 0.014145;
+}	
+
+object transformer_configuration { // TRAFO TRIFASICO 112.5 KVA
+	name config_4;
+	connect_type DELTA_GWYE;
+  	install_type POLETOP;
+  	power_rating 112.5;
+  	primary_voltage 13800;
+  	secondary_voltage 220;
+  	resistance 0.005547;
+  	reactance 0.008321;
+}
+
+object transformer_configuration { // TRAFO MONOFASICO 10 KVA
+	name config_5;
+	connect_type SINGLE_PHASE;
+  	install_type POLETOP;
+  	power_rating 10;
+  	primary_voltage 13800;
+  	secondary_voltage 220;
+  	resistance 0.005547;
+  	reactance 0.026070;
+}
+
+object transformer_configuration { // TRAFO MONOFASICO 15 KVA
+	name config_6;
+	connect_type SINGLE_PHASE;
+  	install_type POLETOP;
+  	power_rating 15;
+  	primary_voltage 13800;
+  	secondary_voltage 220;
+  	resistance 0.005547;
+  	reactance 0.026070;
+}
+
+object transformer_configuration { // TRAFO MONOFASICO 5 KVA
+	name config_7;
+	connect_type SINGLE_PHASE;
+  	install_type POLETOP;
+  	power_rating 5;
+  	primary_voltage 13800;
+  	secondary_voltage 220;
+  	resistance 0.005547;
+  	reactance 0.026070;
+}
+
+object transformer_configuration { // TRAFO MONOFASICO 25 KVA
+	name config_8;
+	connect_type SINGLE_PHASE;
+  	install_type POLETOP;
+  	power_rating 25;
+  	primary_voltage 13800;
+  	secondary_voltage 220;
+  	resistance 0.005547;
+  	reactance 0.026070;
+}
+
+object transformer_configuration { // TRAFO MONOFASICO 30 KVA
+	name config_9;
+	connect_type SINGLE_PHASE;
+  	install_type POLETOP;
+  	power_rating 30;
+  	primary_voltage 13800;
+  	secondary_voltage 220;
+  	resistance 0.005547;
+  	reactance 0.026070;
+}
+
+object transformer_configuration { // TRAFO MONOFASICO 35 KVA
+	name config_10;
+	connect_type SINGLE_PHASE;
+  	install_type POLETOP;
+  	power_rating 35;
+  	primary_voltage 13800;
+  	secondary_voltage 220;
+  	resistance 0.005547;
+  	reactance 0.026070;
+}
+
+object overhead_line { // LINHA_1
+     phases "ABC";
+     name barra_2_medidor_carga;
+     from barra_2;
+     to medidor_carga;
+     length 32.8; //(10 m)
+     configuration confg_linha_1;
+}
+
+
+object node { 
+      name barra_2_saida;
+      phases "ABC";
+      voltage_A 7967.4+0d;
+      voltage_B 7967.4-120d;
+      voltage_C 7967.4+120d;
+      nominal_voltage 7967.4; 
+	 
+} 
+
+object meter {     
+    name medidor_carga;     
+    phases ABC;
+    object recorder{
+		file Medidor_carga.csv;
+		property measured_real_power, measured_reactive_power;
+		interval 600;
+	};			
+    nominal_voltage 7967.4; 
+	  
+} 
+
+object overhead_line { // LINHA_1
+     phases "ABC";
+     name medidor_carga_barra_2_saida;
+     from medidor_carga;
+     to barra_2_saida;
+     length 32.8; //(10 m)
+     configuration confg_linha_1;
+}
+
+
+
+
+//****************** SEGMENTOS DE LINHA - ALIMETADOR SANTA MARIA ******************//
+
+// ---------------------- ÁREA 1 -------------------------------------- //
+
+object overhead_line { // LINHA_1
+     phases "ABC";
+     name linha_1;
+     from barra_2_saida;
+     to barra_3;
+     length 315.32; //(96.11 m)
+     configuration confg_linha_1;
+}
+
+object overhead_line { // LINHA_2
+     phases "ABC";
+     name linha_2;
+     from barra_3;
+     to barra_4;
+     length 257.8; //(78.6 m)
+     configuration confg_linha_1;
+}
+
+object overhead_line { // LINHA_3
+     phases "ABC";
+     name linha_3;
+     from barra_4;
+     to barra_5;
+     length 354.9; //(108.19 m)
+     configuration confg_linha_1;
+}
+
+object overhead_line { // LINHA_4
+     phases "ABC";
+     name linha_4;
+     from barra_5;
+     to barra_6;
+     length 71.5; //(21.8 m)
+     configuration confg_linha_1;
+}
+
+object overhead_line { // LINHA_5
+     phases "ABC";
+     name linha_5;
+     from barra_6;
+     to barra_7;
+     length 255.5; //(77.9 m)
+     configuration confg_linha_1;
+}
+
+object overhead_line { // LINHA_6
+     phases "ABC";
+     name linha_6;
+     from barra_7;
+     to barra_8;
+     length 174.8; //(53.3 m)
+     configuration confg_linha_1;
+}
+
+object overhead_line { // LINHA_7
+     phases "ABC";
+     name linha_7;
+     from barra_8;
+     to barra_9;
+     length 61.3; //(18.7 m)
+     configuration confg_linha_1;
+}
+
+object overhead_line { // LINHA_8
+     phases "ABC";
+     name linha_8;
+     from barra_9;
+     to barra_10;
+     length 357.61; //(109.0 m)
+     configuration confg_linha_1;
+}
+
+object overhead_line { // LINHA_9 (TRAFO_1)
+     phases "ABC";
+     name linha_9;
+     from barra_10;
+     to barra_trafo_1;
+     length 96.7; //(29.5 m)
+     configuration confg_linha_1;
+}
+
+object overhead_line { // LINHA_10
+     phases "ABC";
+     name linha_10;
+     from barra_trafo_1;
+     to barra_11;
+     length 421.2; //(128.4 m)
+     configuration confg_linha_1;
+}
+
+object overhead_line { // LINHA_11
+     phases "ABC";
+     name linha_11;
+     from barra_11;
+     to barra_12;
+     length 104.0; //(31.7 m)
+     configuration confg_linha_1;
+}
+
+object overhead_line { // LINHA_12 (TRAFO_2)
+     phases "ABC";
+     name linha_12;
+     from barra_12;
+     to barra_trafo_2;
+     length 231.6; //(70.6 m)
+     configuration confg_linha_1;
+}
+
+object overhead_line { // LINHA 13 (TRAFO 3)
+     phases "ABC";
+     name linha_13;
+     from barra_4;
+     to barra_trafo_3;
+     length 342.2; //(104.3 m)
+     configuration confg_linha_1;
+}
+
+object overhead_line { // LINHA 14 
+     phases "ABC";
+     name linha_14;
+     from barra_trafo_3;
+     to barra_13;
+     length 130.57; //(39.8 m)
+     configuration confg_linha_1;
+}
+
+object overhead_line { // LINHA 16 (TRAFO 4) 
+     phases "ABC";
+     name linha_16;
+     from barra_13;
+     to barra_trafo_4;
+     length 64.3; //(19.6 m)
+     configuration confg_linha_1;
+}
+
+object overhead_line { // LINHA 15 (TRAFO 5) 
+     phases "ABC";
+     name linha_15;
+     from barra_13;
+     to barra_trafo_5;
+     length 553.1; //(168.6 m)
+     configuration confg_linha_1;
+}
+
+object overhead_line { // LINHA 17 (TRAFO 6) 
+     phases "ABC";
+     name linha_17;
+     from barra_5;
+     to barra_trafo_6;
+     length 938.9; //(286.2 m)
+     configuration confg_linha_1;
+}
+
+object overhead_line { // LINHA 18 (TRAFO 7) 
+     phases "ABC";
+     name linha_18;
+     from barra_trafo_6;
+     to barra_trafo_7;
+     length 760.17; //(231.7 m)
+     configuration confg_linha_1;
+}
+
+object overhead_line { // LINHA 19  
+     phases "ABC";
+     name linha_19;
+     from barra_6;
+     to barra_14;
+     length 450.4; //(137.3 m)
+     configuration confg_linha_1;
+}
+
+object overhead_line { // LINHA 31  
+     phases "ABC";
+     name linha_31;
+     from barra_9;
+     to barra_18;
+     length 162.7; //(49.6 m)
+     configuration confg_linha_2;
+}
+
+object overhead_line { // LINHA 32 (TRAFO 17)  
+     phases "ABC";
+     name linha_32;
+     from barra_18;
+     to barra_trafo_17;
+     length 142.7; //(43.5 m)
+     configuration confg_linha_2;
+}
+
+object overhead_line { // LINHA 33 (TRAFO 16)  
+     phases "ABC";
+     name linha_33;
+     from barra_18;
+     to barra_trafo_16;
+     length 44.6; //(13.6 m)
+     configuration confg_linha_2;
+}
+
+object overhead_line { // LINHA 34 (TRAFO 18)  
+     phases "ABC";
+     name linha_34;
+     from barra_8;
+     to barra_trafo_18;
+     length 217.8; //(66.4 m)
+     configuration confg_linha_2;
+}
+
+object overhead_line { // LINHA 35   
+     phases "ABC";
+     name linha_35;
+     from barra_10;
+     to barra_19;
+     length 210.6; //(64.2 m)
+     configuration confg_linha_2;
+}
+
+object overhead_line { // LINHA 36 (TRAFO 19)   
+     phases "ABC";
+     name linha_36;
+     from barra_19;
+     to barra_trafo_19;
+     length 213.2; //(65 m)
+     configuration confg_linha_2;
+}
+
+object overhead_line { // LINHA 37 (TRAFO 20)     
+     phases "ABC";
+     name linha_37;
+     from barra_trafo_19;
+     to barra_trafo_20;
+     length 354.3; //(108 m)
+     configuration confg_linha_2;
+}
+
+object overhead_line { // LINHA 38(TRAFO 21)     
+     phases "ABC";
+     name linha_38;
+     from barra_trafo_20;
+     to barra_trafo_21;
+     length 260.4; //(79.4m)
+     configuration confg_linha_2;
+}
+
+object overhead_line { // LINHA 39     
+     phases "ABC";
+     name linha_39;
+     from barra_19;
+     to barra_20;
+     length 197.4; //(60.18m)
+     configuration confg_linha_2;
+}
+
+object overhead_line { // LINHA 40 (TRAFO 22)     
+     phases "ABC";
+     name linha_40;
+     from barra_20;
+     to barra_trafo_22;
+     length 471.1; //(143.6m)
+     configuration confg_linha_2;
+}
+
+object overhead_line { // LINHA 41    
+     phases "ABC";
+     name linha_41;
+     from barra_20;
+     to barra_21;
+     length 223.1; //(68.01m)
+     configuration confg_linha_2;
+}
+
+object overhead_line { // LINHA 42(TRAFO 25)     
+     phases "ABC";
+     name linha_42;
+     from barra_21;
+     to barra_trafo_25;
+     length 164.7; //(50.2m)
+     configuration confg_linha_2;
+}
+
+object overhead_line { // LINHA 43(TRAFO 26)     
+     phases "ABC";
+     name linha_43;
+     from barra_trafo_25;
+     to barra_trafo_26;
+     length 320.8; //(97.8m)
+     configuration confg_linha_2;
+}
+
+object overhead_line { // LINHA 44(TRAFO 24)     
+     phases "ABC";
+     name linha_44;
+     from barra_21;
+     to barra_trafo_24;
+     length 36; //(11m)
+     configuration confg_linha_2;
+}
+
+object overhead_line { // LINHA 45(TRAFO 23)     
+     phases "ABC";
+     name linha_45;
+     from barra_trafo_24;
+     to barra_trafo_23;
+     length 135.4; //(41.3m)
+     configuration confg_linha_2;
+}
+
+object overhead_line { // LINHA 46(TRAFO 27)     
+     phases "ABC";
+     name linha_46;
+     from barra_9;
+     to barra_trafo_27;
+     length 73.1; //(22.3m)
+     configuration confg_linha_2;
+}
+
+object overhead_line { // LINHA 47(TRAFO 28)     
+     phases "ABC";
+     name linha_47;
+     from barra_11;
+     to barra_trafo_28;
+     length 604.6; //(184.3m)
+     configuration confg_linha_2;
+}
+
+object overhead_line { // LINHA 48(TRAFO 29)     
+     phases "ABC";
+     name linha_48;
+     from barra_12;
+     to barra_trafo_29;
+     length 180.7; //(55.1 m)
+     configuration confg_linha_2;
+}
+
+object overhead_line { // LINHA 49    
+     phases "ABC";
+     name linha_49;
+     from barra_trafo_29;
+     to barra_22;
+     length 433.7; //(132.2m)
+     configuration confg_linha_2;
+}
+
+object overhead_line { // LINHA 50(TRAFO 30)     
+     phases "ABC";
+     name linha_50;
+     from barra_22;
+     to barra_trafo_30;
+     length 425.5; //(129.7m)
+     configuration confg_linha_2;
+}
+
+object overhead_line { // LINHA 51(TRAFO 31)     
+     phases "ABC";
+     name linha_51;
+     from barra_22;
+     to barra_trafo_31;
+     length 458.3; //(139.7m)
+     configuration confg_linha_2;
+}
+
+object overhead_line { // LINHA 52(TRAFO 32)     
+     phases "ABC";
+     name linha_52;
+     from barra_22;
+     to barra_trafo_32;
+     length 380.9; //(116.1m)
+     configuration confg_linha_2;
+}
+
+object overhead_line { // LINHA 53(TRAFO 33)     
+     phases "ABC";
+     name linha_53;
+     from barra_trafo_32;
+     to barra_trafo_33;
+     length 1629.2; //(469.6m)
+     configuration confg_linha_3;
+}
+
+object overhead_line { // LINHA 54(TRAFO 42)     
+     phases "ABC";
+     name linha_54;
+     from barra_7;
+     to barra_trafo_42;
+     length 115.8; //(35.3m)
+     configuration confg_linha_2;
+}
+
+object overhead_line { // LINHA 55(TRAFO 34)     
+     phases "ABC";
+     name linha_55;
+     from barra_trafo_42;
+     to barra_trafo_34;
+     length 3242.7; //(988.4m)
+     configuration confg_linha_2;
+}
+
+
+
+// ---------------------- ÁREA 3 -------------------------------------- //
+
+object overhead_line { // LINHA 56    
+     phases "ABC";
+     name linha_56;
+     from barra_trafo_34;
+     to barra_23;
+     length 697.5; //(212.6m)
+     configuration confg_linha_2;
+}
+
+object overhead_line { // LINHA 57(TRAFO 35)     
+     phases "ABC";
+     name linha_57;
+     from barra_23;
+     to barra_trafo_35;
+     length 431.7; //(131,6m)
+     configuration confg_linha_2;
+}
+
+object overhead_line { // LINHA 58     
+     phases "ABC";
+     name linha_58;
+     from barra_trafo_35;
+     to barra_24;
+     length 407.4; //(124.2m)
+     configuration confg_linha_2;
+}
+
+object overhead_line { // LINHA 59(TRAFO 36)     
+     phases "ABC";
+     name linha_59;
+     from barra_24;
+     to barra_trafo_36;
+     length 279.5; //(85.2m)
+     configuration confg_linha_2;
+}
+
+object overhead_line { // LINHA 60(TRAFO 37)     
+     phases "ABC";
+     name linha_60;
+     from barra_24;
+     to barra_trafo_37;
+     length 465.2; //(141,8m)
+     configuration confg_linha_2;
+}
+
+object overhead_line { // LINHA 61     
+     phases "ABC";
+     name linha_61;
+     from barra_24;
+     to barra_25;
+     length 173.5; //(52.9m)
+     configuration confg_linha_2;
+}
+
+object overhead_line { // LINHA 62(TRAFO 38)     
+     phases "ABC";
+     name linha_62;
+     from barra_25;
+     to barra_trafo_38;
+     length 363.1; //(110.7m)
+     configuration confg_linha_2;
+}
+
+object overhead_line { // LINHA 63(TRAFO 39)     
+     phases "ABC";
+     name linha_63;
+     from barra_25;
+     to barra_trafo_39;
+     length 354.9; //(108.2m)
+     configuration confg_linha_2;
+}
+
+object overhead_line { // LINHA 64   
+     phases "ABC";
+     name linha_64;
+     from barra_23;
+     to barra_26;
+     length 1067.2; //(325.3m)
+     configuration confg_linha_2;
+}
+
+object overhead_line { // LINHA 65     
+     phases "ABC";
+     name linha_65;
+     from barra_26;
+     to barra_27;
+     length 385.5; //(116.9m)
+     configuration confg_linha_4;
+}
+
+object overhead_line { // LINHA 66(TRAFO 41)     
+     phases "ABC";
+     name linha_66;
+     from barra_27;
+     to barra_trafo_41;
+     length 454.0; //(138.4m)
+     configuration confg_linha_2;
+}
+
+object overhead_line { // LINHA 67(TRAFO 40)     
+     phases "ABC";
+     name linha_67;
+     from barra_27;
+     to barra_trafo_40;
+     length 129.9; //(39.6m)
+     configuration confg_linha_2;
+}
+
+
+// ---------------------- ÁREA 2 -------------------------------------- //
+
+object overhead_line { // LINHA 20 (TRAFO 8)
+     phases "ABC";
+     name linha_20;
+     from barra_14;
+     to barra_trafo_8;
+     length 766.07; //(233.5 m)
+     configuration confg_linha_1;
+}
+
+object overhead_line { // LINHA 21 (TRAFO 9)
+     phases "ABC";
+     name linha_21;
+     from barra_trafo_8;
+     to barra_trafo_9;
+     length 567.12; //(172.8 m)
+     configuration confg_linha_1;
+}
+
+object overhead_line { // LINHA 22 
+     phases "ABC";
+     name linha_22;
+     from barra_trafo_9;
+     to barra_15;
+     length 318.8; //(97.2 m)
+     configuration confg_linha_2;
+}
+
+object overhead_line { // LINHA 23 
+     phases "ABC";
+     name linha_23;
+     from barra_15;
+     to barra_16;
+     length 250; //(76.2 m)
+     configuration confg_linha_2;
+}
+
+object overhead_line { // LINHA 24 (TRAFO 11)
+     phases "ABC";
+     name linha_24;
+     from barra_16;
+     to barra_trafo_11;
+     length 582.0; //(177.4 m)
+     configuration confg_linha_2;
+}
+
+object overhead_line { // LINHA 25 (TRAFO 10)
+     phases "ABC";
+     name linha_25;
+     from barra_16;
+     to barra_trafo_10;
+     length 101.7; //(31 m)
+     configuration confg_linha_2;
+}
+
+object overhead_line { // LINHA 26 (TRAFO 12)
+     phases "ABC";
+     name linha_26;
+     from barra_15;
+     to barra_trafo_12;
+     length 740.8; //(225.8 m)
+     configuration confg_linha_2;
+}
+
+object overhead_line { // LINHA 27 (TRAFO 13)
+     phases "ABC";
+     name linha_27;
+     from barra_14;
+     to barra_trafo_13;
+     length 1162.4; //(354.3 m)
+     configuration confg_linha_2;
+}
+
+object overhead_line { // LINHA 28 
+     phases "ABC";
+     name linha_28;
+     from barra_trafo_13;
+     to barra_17;
+     length 203.7; //(62.1 m)
+     configuration confg_linha_2;
+}
+
+object overhead_line { // LINHA 29 (TRAFO 14) 
+     phases "ABC";
+     name linha_29;
+     from barra_17;
+     to barra_trafo_14;
+     length 465.8; //(142 m)
+     configuration confg_linha_2;
+}
+
+object overhead_line { // LINHA 30 (TRAFO 15) 
+     phases "ABC";
+     name linha_30;
+     from barra_17;
+     to barra_trafo_15;
+     length 374.3; //(114.1 m)
+     configuration confg_linha_2;
+}
+
+
+// SEGMENTOS DE LINHA - ALIMETADOR PIQUIRI -----------------------------------------------//
+
+object overhead_line { // LINHA 68  
+     phases "ABC";
+     name linha_68;
+     from barra_2_saida;
+     to barra_28;
+     length 463.2; //(141.2 m)
+     configuration confg_linha_1;
+}
+
+object overhead_line { // LINHA 69  
+     phases "ABC";
+     name linha_69;
+     from barra_28;
+     to barra_29;
+     length 1680.7; //(512.3 m)
+     configuration confg_linha_1;
+}
+
+object overhead_line { // LINHA 70  
+     phases "ABC";
+     name linha_70;
+     from barra_29;
+     to barra_30;
+     length 63.3; //(19.3 m)
+     configuration confg_linha_1;
+}
+
+
+object overhead_line { // LINHA 71 (TRAFO 44) 
+     phases "ABC";
+     name linha_71;
+     from barra_30;
+     to barra_trafo_44;
+     length 1258.5; //(383.6 m)
+     configuration confg_linha_2;
+}
+
+object overhead_line { // LINHA 72 (TRAFO 43) 
+     phases "ABC";
+     name linha_72;
+     from barra_29;
+     to barra_trafo_43;
+     length 512.1; //(156.1 m)
+     configuration confg_linha_1;
+}
+
+object overhead_line { // LINHA 73  
+     phases "ABC";
+     name linha_73;
+     from barra_trafo_43;
+     to barra_31;
+     length 465.8; //(142m)
+     configuration confg_linha_1;
+}
+
+object overhead_line { // LINHA 74   
+     phases "ABC";
+     name linha_74;
+     from barra_31;
+     to barra_32;
+     length 580; //(176.8m)
+     configuration confg_linha_1;
+}
+
+
+object overhead_line { // LINHA 76 (TRAFO 46) 
+     phases "ABC";
+     name linha_76;
+     from barra_31;
+     to barra_trafo_46;
+     length 967.8; //(295m)
+     configuration confg_linha_2;
+}
+
+object overhead_line { // LINHA 77 (TRAFO 45)  
+     phases "ABC";
+     name linha_77;
+     from barra_trafo_46;
+     to barra_trafo_45;
+     length 610.9; //(186.2m)
+     configuration confg_linha_2;
+}
+
+object overhead_line { // LINHA 78   
+     phases "ABC";
+     name linha_78;
+     from barra_32;
+     to barra_33;
+     length 224; //(68.3m)
+     configuration confg_linha_2;
+}
+
+object overhead_line { // LINHA 79 (TRAFO 42)  
+     phases "ABC";
+     name linha_79;
+     from barra_33;
+     to barra_trafo_89;
+     length 912.0; //(278.0m)
+     configuration confg_linha_2;
+}
+
+object overhead_line { // LINHA 80  
+     phases "ABC";
+     name linha_80;
+     from barra_33;
+     to barra_34;
+     length 1081.6; //(329.7m)
+     configuration confg_linha_2;
+}
+
+object overhead_line { // LINHA 81 (TRAFO 48)  
+     phases "ABC";
+     name linha_81;
+     from barra_34;
+     to barra_trafo_48;
+     length 223.7; //(68.2m)
+     configuration confg_linha_2;
+}
+
+object overhead_line { // LINHA 82 (TRAFO 47)  
+     phases "ABC";
+     name linha_82;
+     from barra_trafo_48;
+     to barra_trafo_47;
+     length 804.7; //(245.3m)
+     configuration confg_linha_2;
+}
+
+object overhead_line { // LINHA 83  
+     phases "AC";
+     name linha_83;
+     from barra_34;
+     to barra_35;
+     length 1140.7; //(347,7m)
+     configuration confg_linha_5;
+}
+
+object overhead_line { // LINHA 84 (TRAFO 49)  
+     phases "AC";
+     name linha_84;
+     from barra_35;
+     to barra_trafo_49;
+     length 736.8; //(224.6m)
+     configuration confg_linha_5;
+}
+
+object overhead_line { // LINHA  85 
+     phases "AC";
+     name linha_85;
+     from barra_trafo_49;
+     to barra_36;
+     length 780.5; //(237.9m)
+     configuration confg_linha_5;
+}
+
+object overhead_line { // LINHA 86 (TRAFO 50)  
+     phases "AC";
+     name linha_86;
+     from barra_36;
+     to barra_trafo_50;
+     length 512.4; //(156.2m)
+     configuration confg_linha_5;
+}
+
+object overhead_line { // LINHA 87 (TRAFO 51)  
+     phases "AC";
+     name linha_87;
+     from barra_36;
+     to barra_trafo_51;
+     length 97.1; //(29.6m)
+     configuration confg_linha_5;
+}
+
+object overhead_line { // LINHA 88  
+     phases "AC";
+     name linha_88;
+     from barra_trafo_51;
+     to barra_37;
+     length 140.0; //(42.7m)
+     configuration confg_linha_5;
+}
+
+object overhead_line { // LINHA 89 (TRAFO 52)  
+     phases "AC";
+     name linha_89;
+     from barra_37;
+     to barra_trafo_52;
+     length 711.6; //(216.9m)
+     configuration confg_linha_5;
+}
+
+object overhead_line { // LINHA 90 (TRAFO 53)  
+     phases "AC";
+     name linha_90;
+     from barra_37;
+     to barra_trafo_53;
+     length 523.9; //(159.7m)
+     configuration confg_linha_5;
+}
+
+object overhead_line { // LINHA 91 (TRAFO 54)   
+     phases "AC";
+     name linha_91;
+     from barra_trafo_53;
+     to barra_trafo_54;
+     length 1041.3; //(317.4m)
+     configuration confg_linha_5;
+}
+
+object overhead_line { // LINHA 92 (TRAFO 55)  
+     phases "AC";
+     name linha_92;
+     from barra_trafo_54;
+     to barra_trafo_55;
+     length 1364.5; //(415.9m)
+     configuration confg_linha_5;
+}
+
+object overhead_line { // LINHA 93 (TRAFO 56)  
+     phases "AC";
+     name linha_93;
+     from barra_trafo_55;
+     to barra_trafo_56;
+     length 577.4; //(176m)
+     configuration confg_linha_5;
+}
+
+object overhead_line { // LINHA 94 (TRAFO 57)  
+     phases "AC";
+     name linha_94;
+     from barra_trafo_56;
+     to barra_trafo_57;
+     length 1101.3; //(335.7m)
+     configuration confg_linha_5;
+}
+
+object overhead_line { // LINHA 95 (TRAFO 58)  
+     phases "AC";
+     name linha_95;
+     from barra_trafo_53;
+     to barra_trafo_58;
+     length 620.7; //(189.2m)
+     configuration confg_linha_5;
+}
+
+object overhead_line { // LINHA 96  
+     phases "AC";
+     name linha_96;
+     from barra_trafo_58;
+     to barra_38;
+     length 1585.3; //(483.2m)
+     configuration confg_linha_5;
+}
+
+object overhead_line { // LINHA 97 (TRAFO 59)  
+     phases "AC";
+     name linha_97;
+     from barra_38;
+     to barra_trafo_59;
+     length 1128.9; //(344.1m)
+     configuration confg_linha_5;
+}
+
+object overhead_line { // LINHA 98  
+     phases "AC";
+     name linha_98;
+     from barra_38;
+     to barra_39;
+     length 1041.9; //(317.6m)
+     configuration confg_linha_5;
+}
+
+object overhead_line { // LINHA 99 (TRAFO 60)  
+     phases "AC";
+     name linha_99;
+     from barra_39;
+     to barra_trafo_60;
+     length 604.6; //(184.3m)
+     configuration confg_linha_5;
+}
+
+object overhead_line { // LINHA 100 (TRAFO 61)  
+     phases "AC";
+     name linha_100;
+     from barra_trafo_60;
+     to barra_trafo_61;
+     length 519; //(158.2m)
+     configuration confg_linha_5;
+}
+
+object overhead_line { // LINHA 101 (TRAFO 62)  
+     phases "AC";
+     name linha_101;
+     from barra_39;
+     to barra_trafo_62;
+     length 200.7; //(61.2m)
+     configuration confg_linha_5;
+}
+
+object overhead_line { // LINHA 102 (TRAFO 63)  
+     phases "AC";
+     name linha_102;
+     from barra_39;
+     to barra_trafo_63;
+     length 980.9; //(299m)
+     configuration confg_linha_5;
+}
+
+object overhead_line { // LINHA 103 (TRAFO 65)  
+     phases "AC";
+     name linha_103;
+     from barra_trafo_63;
+     to barra_trafo_65;
+     length 166.01; //(50.6m)
+     configuration confg_linha_5;
+}
+
+object overhead_line { // LINHA 104 (TRAFO 64)   
+     phases "AC";
+     name linha_104;
+     from barra_trafo_65;
+     to barra_trafo_64;
+     length 417.6; //(127.3m)
+     configuration confg_linha_5;
+}
+
+object overhead_line { // LINHA 105 (TRAFO 66)  
+     phases "AC";
+     name linha_105;
+     from barra_trafo_65;
+     to barra_trafo_66;
+     length 1040.3; //(317.1m)
+     configuration confg_linha_5;
+}
+
+object overhead_line { // LINHA 106 (TRAFO 67)  
+     phases "AC";
+     name linha_106;
+     from barra_trafo_66;
+     to barra_trafo_67;
+     length 3076.1; //(937.6m)
+     configuration confg_linha_5;
+}
+
+object overhead_line { // LINHA 107 (TRAFO 68)   
+     phases "AC";
+     name linha_107;
+     from barra_35;
+     to barra_trafo_68;
+     length 642.2; //(195.7m)
+     configuration confg_linha_5;
+}
+
+object overhead_line { // LINHA 108 (TRAFO 69)   
+     phases "AC";
+     name linha_108;
+     from barra_trafo_68;
+     to barra_trafo_69;
+     length 677.1; //(206.4m)
+     configuration confg_linha_5;
+}
+
+object overhead_line { // LINHA 109 (TRAFO 70)   
+     phases "AC";
+     name linha_109;
+     from barra_trafo_69;
+     to barra_trafo_70;
+     length 783.7; //(238.9m)
+     configuration confg_linha_5;
+}
+
+object overhead_line { // LINHA 110 (TRAFO 71)   
+     phases "AC";
+     name linha_110;
+     from barra_trafo_70;
+     to barra_trafo_71;
+     length 431.4; //(131.5m)
+     configuration confg_linha_5;
+}
+
+object overhead_line { // LINHA 111   
+     phases "AC";
+     name linha_111;
+     from barra_trafo_71;
+     to barra_40;
+     length 672.5; //(205m)
+     configuration confg_linha_5;
+}
+
+object overhead_line { // LINHA 112 (TRAFO 72)   
+     phases "AC";
+     name linha_112;
+     from barra_40;
+     to barra_trafo_72;
+     length 559.7; //(170.6m)
+     configuration confg_linha_5;
+}
+
+object overhead_line { // LINHA 113    
+     phases "AC";
+     name linha_113;
+     from barra_40;
+     to barra_41;
+     length 974; //(296.9m)
+     configuration confg_linha_5;
+}
+
+object overhead_line { // LINHA 114   
+     phases "AC";
+     name linha_114;
+     from barra_41;
+     to barra_42;
+     length 896.6; //(273.3m)
+     configuration confg_linha_5;
+}
+
+object overhead_line { // LINHA 115 (TRAFO 73)   
+     phases "AC";
+     name linha_115;
+     from barra_42;
+     to barra_trafo_73;
+     length 204.7; //(62.4m)
+     configuration confg_linha_5;
+}
+
+object overhead_line { // LINHA 116 (TRAFO 74)   
+     phases "AC";
+     name linha_116;
+     from barra_42;
+     to barra_trafo_74;
+     length 556.6; //(168.5m)
+     configuration confg_linha_5;
+}
+
+object overhead_line { // LINHA 117 (TRAFO 75)   
+     phases "AC";
+     name linha_117;
+     from barra_trafo_74;
+     to barra_trafo_75;
+     length 88.16; //(26.7m)
+     configuration confg_linha_5;
+}
+
+object overhead_line { // LINHA 118 (TRAFO 76)   
+     phases "AC";
+     name linha_118;
+     from barra_trafo_75;
+     to barra_trafo_76;
+     length 1378.5; //(417.5m)
+     configuration confg_linha_5;
+}
+
+object overhead_line { // LINHA 119 (TRAFO 77)   
+     phases "AC";
+     name linha_119;
+     from barra_trafo_75;
+     to barra_trafo_77;
+     length 763.09; //(231.1m)
+     configuration confg_linha_5;
+}
+
+object overhead_line { // LINHA 120    
+     phases "AC";
+     name linha_120;
+     from barra_trafo_77;
+     to barra_43;
+     length 265.15; //(80.3m)
+     configuration confg_linha_5;
+}
+
+object overhead_line { // LINHA 121 (TRAFO 78)   
+     phases "AC";
+     name linha_121;
+     from barra_43;
+     to barra_trafo_78;
+     length 350.8; //(106.2m)
+     configuration confg_linha_5;
+}
+
+object overhead_line { // LINHA 122 (TRAFO 79)   
+     phases "AC";
+     name linha_122;
+     from barra_trafo_78;
+     to barra_trafo_79;
+     length 423.9; //(128.4m)
+     configuration confg_linha_5;
+}
+
+object overhead_line { // LINHA 123    
+     phases "AC";
+     name linha_123;
+     from barra_43;
+     to barra_44;
+     length 428.5; //(129.8m)
+     configuration confg_linha_5;
+}
+
+object overhead_line { // LINHA 124 (TRAFO 81)   
+     phases "AC";
+     name linha_124;
+     from barra_44;
+     to barra_trafo_81;
+     length 94.3; //(28.5m)
+     configuration confg_linha_5;
+}
+
+object overhead_line { // LINHA 125 (TRAFO 80)    
+     phases "AC";
+     name linha_125;
+     from barra_44;
+     to barra_trafo_80;
+     length 298.17; //(90.3m)
+     configuration confg_linha_5;
+}
+
+object overhead_line { // LINHA 126 (TRAFO 82)    
+     phases "AC";
+     name linha_126;
+     from barra_44;
+     to barra_trafo_82;
+     length 1491.8; //(451.7m)
+     configuration confg_linha_5;
+}
+
+object overhead_line { // LINHA 127 (TRAFO 83)   
+     phases "AC";
+     name linha_127;
+     from barra_41;
+     to barra_trafo_83;
+     length 1289.1; //(390.4m)
+     configuration confg_linha_5;
+}
+
+object overhead_line { // LINHA 128    
+     phases "AC";
+     name linha_128;
+     from barra_trafo_83;
+     to barra_45;
+     length 256.5; //(77.69m)
+     configuration confg_linha_5;
+}
+
+object overhead_line { // LINHA 129 (TRAFO 84)   
+     phases "AC";
+     name linha_129;
+     from barra_45;
+     to barra_trafo_84;
+     length 877.6; //(265.8m)
+     configuration confg_linha_5;
+}
+
+object overhead_line { // LINHA 130 (TRAFO 85)   
+     phases "AC";
+     name linha_130;
+     from barra_trafo_84;
+     to barra_trafo_85;
+     length 208.02; //(63m)
+     configuration confg_linha_5;
+}
+
+object overhead_line { // LINHA 131 (TRAFO 86)   
+     phases "AC";
+     name linha_131;
+     from barra_trafo_85;
+     to barra_trafo_86;
+     length 866.4; //(262.4m)
+     configuration confg_linha_5;
+}
+
+object overhead_line { // LINHA 132 (TRAFO 87)   
+     phases "AC";
+     name linha_132;
+     from barra_45;
+     to barra_trafo_87;
+     length 1559.8; //(472.3m)
+     configuration confg_linha_5;
+}
+
+object overhead_line { // LINHA 133 (TRAFO 88)   
+     phases "AC";
+     name linha_133;
+     from barra_trafo_87;
+     to barra_trafo_88;
+     length 1174.8; //(355.8m)
+     configuration confg_linha_5;
+}
+
+
+//---------------- DECLARAÇÃO DAS BARRAS - ALIMENTADOR V. SANTA MARIA--------------------//
+
+
+//----- BARRA DOS TRAFOS ------//
+
+object node { 
+     name barra_trafo_1;
+     phases "ABC";
+     voltage_A 7967.4+0d;
+     voltage_B 7967.4-120d;
+     voltage_C 7967.4+120d;
+     nominal_voltage 7967.4; 
+}
+
+object node { 
+     name barra_trafo_2;
+     phases "ABC";
+     voltage_A 7967.4+0d;
+     voltage_B 7967.4-120d;
+     voltage_C 7967.4+120d;
+     nominal_voltage 7967.4; 
+}
+
+object node { 
+     name barra_trafo_3;
+     phases "ABC";
+     voltage_A 7967.4+0d;
+     voltage_B 7967.4-120d;
+     voltage_C 7967.4+120d;
+     nominal_voltage 7967.4; 
+}
+
+object node { 
+     name barra_trafo_4;
+     phases "ABC";
+     voltage_A 7967.4+0d;
+     voltage_B 7967.4-120d;
+     voltage_C 7967.4+120d;
+     nominal_voltage 7967.4; 
+}
+
+object node { 
+     name barra_trafo_5;
+     phases "ABC";
+     voltage_A 7967.4+0d;
+     voltage_B 7967.4-120d;
+     voltage_C 7967.4+120d;
+     nominal_voltage 7967.4; 
+}
+
+object node { 
+     name barra_trafo_6;
+     phases "ABC";
+     voltage_A 7967.4+0d;
+     voltage_B 7967.4-120d;
+     voltage_C 7967.4+120d;
+     nominal_voltage 7967.4; 
+}
+
+object node { 
+     name barra_trafo_7;
+     phases "ABC";
+     voltage_A 7967.4+0d;
+     voltage_B 7967.4-120d;
+     voltage_C 7967.4+120d;
+     nominal_voltage 7967.4; 
+}
+
+object node { 
+     name barra_trafo_8;
+     phases "ABC";
+     voltage_A 7967.4+0d;
+     voltage_B 7967.4-120d;
+     voltage_C 7967.4+120d;
+     nominal_voltage 7967.4; 
+}
+
+object node { 
+     name barra_trafo_9;
+     phases "ABC";
+     voltage_A 7967.4+0d;
+     voltage_B 7967.4-120d;
+     voltage_C 7967.4+120d;
+     nominal_voltage 7967.4; 
+}
+
+object node { 
+     name barra_trafo_10;
+     phases "ABC";
+     voltage_A 7967.4+0d;
+     voltage_B 7967.4-120d;
+     voltage_C 7967.4+120d;
+     nominal_voltage 7967.4; 
+}
+
+object node { 
+     name barra_trafo_11;
+     phases "ABC";
+     voltage_A 7967.4+0d;
+     voltage_B 7967.4-120d;
+     voltage_C 7967.4+120d;
+     nominal_voltage 7967.4; 
+}
+
+object node { 
+     name barra_trafo_12;
+     phases "ABC";
+     voltage_A 7967.4+0d;
+     voltage_B 7967.4-120d;
+     voltage_C 7967.4+120d;
+     nominal_voltage 7967.4; 
+}
+
+object node { 
+     name barra_trafo_13;
+     phases "ABC";
+     voltage_A 7967.4+0d;
+     voltage_B 7967.4-120d;
+     voltage_C 7967.4+120d;
+     nominal_voltage 7967.4; 
+}
+
+object node { 
+     name barra_trafo_14;
+     phases "ABC";
+     voltage_A 7967.4+0d;
+     voltage_B 7967.4-120d;
+     voltage_C 7967.4+120d;
+     nominal_voltage 7967.4; 
+}
+
+object node { 
+     name barra_trafo_15;
+     phases "ABC";
+     voltage_A 7967.4+0d;
+     voltage_B 7967.4-120d;
+     voltage_C 7967.4+120d;
+     nominal_voltage 7967.4; 
+}
+
+object node { 
+     name barra_trafo_16;
+     phases "ABC";
+     voltage_A 7967.4+0d;
+     voltage_B 7967.4-120d;
+     voltage_C 7967.4+120d;
+     nominal_voltage 7967.4; 
+}
+
+object node { 
+     name barra_trafo_17;
+     phases "ABC";
+     voltage_A 7967.4+0d;
+     voltage_B 7967.4-120d;
+     voltage_C 7967.4+120d;
+     nominal_voltage 7967.4; 
+}
+
+object node { 
+     name barra_trafo_18;
+     phases "ABC";
+     voltage_A 7967.4+0d;
+     voltage_B 7967.4-120d;
+     voltage_C 7967.4+120d;
+     nominal_voltage 7967.4; 
+}
+
+object node { 
+     name barra_trafo_19;
+     phases "ABC";
+     voltage_A 7967.4+0d;
+     voltage_B 7967.4-120d;
+     voltage_C 7967.4+120d;
+     nominal_voltage 7967.4; 
+}
+
+object node { 
+     name barra_trafo_20;
+     phases "ABC";
+     voltage_A 7967.4+0d;
+     voltage_B 7967.4-120d;
+     voltage_C 7967.4+120d;
+     nominal_voltage 7967.4; 
+}
+
+object node { 
+     name barra_trafo_21;
+     phases "ABC";
+     voltage_A 7967.4+0d;
+     voltage_B 7967.4-120d;
+     voltage_C 7967.4+120d;
+     nominal_voltage 7967.4; 
+}
+
+object node { 
+     name barra_trafo_22;
+     phases "ABC";
+     voltage_A 7967.4+0d;
+     voltage_B 7967.4-120d;
+     voltage_C 7967.4+120d;
+     nominal_voltage 7967.4; 
+}
+
+object node { 
+     name barra_trafo_23;
+     phases "ABC";
+     voltage_A 7967.4+0d;
+     voltage_B 7967.4-120d;
+     voltage_C 7967.4+120d;
+     nominal_voltage 7967.4; 
+}
+
+object node { 
+     name barra_trafo_24;
+     phases "ABC";
+     voltage_A 7967.4+0d;
+     voltage_B 7967.4-120d;
+     voltage_C 7967.4+120d;
+     nominal_voltage 7967.4; 
+}
+
+object node { 
+     name barra_trafo_25;
+     phases "ABC";
+     voltage_A 7967.4+0d;
+     voltage_B 7967.4-120d;
+     voltage_C 7967.4+120d;
+     nominal_voltage 7967.4; 
+}
+
+object node { 
+     name barra_trafo_26;
+     phases "ABC";
+     voltage_A 7967.4+0d;
+     voltage_B 7967.4-120d;
+     voltage_C 7967.4+120d;
+     nominal_voltage 7967.4; 
+}
+
+object node { 
+     name barra_trafo_27;
+     phases "ABC";
+     voltage_A 7967.4+0d;
+     voltage_B 7967.4-120d;
+     voltage_C 7967.4+120d;
+     nominal_voltage 7967.4; 
+}
+
+object node { 
+     name barra_trafo_28;
+     phases "ABC";
+     voltage_A 7967.4+0d;
+     voltage_B 7967.4-120d;
+     voltage_C 7967.4+120d;
+     nominal_voltage 7967.4; 
+}
+
+object node { 
+     name barra_trafo_29;
+     phases "ABC";
+     voltage_A 7967.4+0d;
+     voltage_B 7967.4-120d;
+     voltage_C 7967.4+120d;
+     nominal_voltage 7967.4; 
+}
+
+object node { 
+     name barra_trafo_30;
+     phases "ABC";
+     voltage_A 7967.4+0d;
+     voltage_B 7967.4-120d;
+     voltage_C 7967.4+120d;
+     nominal_voltage 7967.4; 
+}
+
+object node { 
+     name barra_trafo_31;
+     phases "ABC";
+     voltage_A 7967.4+0d;
+     voltage_B 7967.4-120d;
+     voltage_C 7967.4+120d;
+     nominal_voltage 7967.4; 
+}
+
+object node { 
+     name barra_trafo_32;
+     phases "ABC";
+     voltage_A 7967.4+0d;
+     voltage_B 7967.4-120d;
+     voltage_C 7967.4+120d;
+     nominal_voltage 7967.4; 
+}
+
+object node { 
+     name barra_trafo_33;
+     phases "ABC";
+     voltage_A 7967.4+0d;
+     voltage_B 7967.4-120d;
+     voltage_C 7967.4+120d;
+     nominal_voltage 7967.4; 
+}
+
+object node { 
+     name barra_trafo_34;
+     phases "ABC";
+     voltage_A 7967.4+0d;
+     voltage_B 7967.4-120d;
+     voltage_C 7967.4+120d;
+     nominal_voltage 7967.4; 
+}
+
+object node { 
+     name barra_trafo_35;
+     phases "ABC";
+     voltage_A 7967.4+0d;
+     voltage_B 7967.4-120d;
+     voltage_C 7967.4+120d;
+     nominal_voltage 7967.4; 
+}
+
+object node { 
+     name barra_trafo_36;
+     phases "ABC";
+     voltage_A 7967.4+0d;
+     voltage_B 7967.4-120d;
+     voltage_C 7967.4+120d;
+     nominal_voltage 7967.4; 
+}
+
+object node { 
+     name barra_trafo_37;
+     phases "ABC";
+     voltage_A 7967.4+0d;
+     voltage_B 7967.4-120d;
+     voltage_C 7967.4+120d;
+     nominal_voltage 7967.4; 
+}
+
+object node { 
+     name barra_trafo_38;
+     phases "ABC";
+     voltage_A 7967.4+0d;
+     voltage_B 7967.4-120d;
+     voltage_C 7967.4+120d;
+     nominal_voltage 7967.4; 
+}
+
+object node { 
+     name barra_trafo_39;
+     phases "ABC";
+     voltage_A 7967.4+0d;
+     voltage_B 7967.4-120d;
+     voltage_C 7967.4+120d;
+     nominal_voltage 7967.4; 
+}
+
+object node { 
+     name barra_trafo_40;
+     phases "ABC";
+     voltage_A 7967.4+0d;
+     voltage_B 7967.4-120d;
+     voltage_C 7967.4+120d;
+     nominal_voltage 7967.4; 
+}
+
+object node { 
+     name barra_trafo_41;
+     phases "ABC";
+     voltage_A 7967.4+0d;
+     voltage_B 7967.4-120d;
+     voltage_C 7967.4+120d;
+     nominal_voltage 7967.4; 
+}
+
+object node { 
+     name barra_trafo_42;
+     phases "ABC";
+     voltage_A 7967.4+0d;
+     voltage_B 7967.4-120d;
+     voltage_C 7967.4+120d;
+     nominal_voltage 7967.4; 
+}
+
+
+//------- BARRAS DE DERIVAÇÃO --------//
+
+object node { 
+     name barra_3;
+     phases "ABC";
+     voltage_A 7967.4+0d;
+     voltage_B 7967.4-120d;
+     voltage_C 7967.4+120d;
+     nominal_voltage 7967.4; 
+}
+
+object node { 
+     name barra_4;
+     phases "ABC";
+     voltage_A 7967.4+0d;
+     voltage_B 7967.4-120d;
+     voltage_C 7967.4+120d;
+     nominal_voltage 7967.4; 
+}
+
+object node { 
+     name barra_5;
+     phases "ABC";
+     voltage_A 7967.4+0d;
+     voltage_B 7967.4-120d;
+     voltage_C 7967.4+120d;
+     nominal_voltage 7967.4; 
+}
+
+object node { 
+     name barra_6;
+     phases "ABC";
+     voltage_A 7967.4+0d;
+     voltage_B 7967.4-120d;
+     voltage_C 7967.4+120d;
+     nominal_voltage 7967.4; 
+}
+
+object node { 
+     name barra_7;
+     phases "ABC";
+     voltage_A 7967.4+0d;
+     voltage_B 7967.4-120d;
+     voltage_C 7967.4+120d;
+     nominal_voltage 7967.4; 
+}
+
+object node { 
+     name barra_8;
+     phases "ABC";
+     voltage_A 7967.4+0d;
+     voltage_B 7967.4-120d;
+     voltage_C 7967.4+120d;
+     nominal_voltage 7967.4; 
+}
+
+object node { 
+     name barra_9;
+     phases "ABC";
+     voltage_A 7967.4+0d;
+     voltage_B 7967.4-120d;
+     voltage_C 7967.4+120d;
+     nominal_voltage 7967.4; 
+}
+
+object node { 
+     name barra_10;
+     phases "ABC";
+     voltage_A 7967.4+0d;
+     voltage_B 7967.4-120d;
+     voltage_C 7967.4+120d;
+     nominal_voltage 7967.4; 
+}
+
+object node { 
+     name barra_11;
+     phases "ABC";
+     voltage_A 7967.4+0d;
+     voltage_B 7967.4-120d;
+     voltage_C 7967.4+120d;
+     nominal_voltage 7967.4; 
+}
+
+object node { 
+     name barra_12;
+     phases "ABC";
+     voltage_A 7967.4+0d;
+     voltage_B 7967.4-120d;
+     voltage_C 7967.4+120d;
+     nominal_voltage 7967.4; 
+}
+
+object node { 
+     name barra_13;
+     phases "ABC";
+     voltage_A 7967.4+0d;
+     voltage_B 7967.4-120d;
+     voltage_C 7967.4+120d;
+     nominal_voltage 7967.4; 
+}
+
+object node { 
+     name barra_14;
+     phases "ABC";
+     voltage_A 7967.4+0d;
+     voltage_B 7967.4-120d;
+     voltage_C 7967.4+120d;
+     nominal_voltage 7967.4; 
+}
+
+object node { 
+     name barra_15;
+     phases "ABC";
+     voltage_A 7967.4+0d;
+     voltage_B 7967.4-120d;
+     voltage_C 7967.4+120d;
+     nominal_voltage 7967.4; 
+}
+
+object node { 
+     name barra_16;
+     phases "ABC";
+     voltage_A 7967.4+0d;
+     voltage_B 7967.4-120d;
+     voltage_C 7967.4+120d;
+     nominal_voltage 7967.4; 
+}
+
+object node { 
+     name barra_17;
+     phases "ABC";
+     voltage_A 7967.4+0d;
+     voltage_B 7967.4-120d;
+     voltage_C 7967.4+120d;
+     nominal_voltage 7967.4; 
+}
+
+object node { 
+     name barra_18;
+     phases "ABC";
+     voltage_A 7967.4+0d;
+     voltage_B 7967.4-120d;
+     voltage_C 7967.4+120d;
+     nominal_voltage 7967.4; 
+}
+
+object node { 
+     name barra_19;
+     phases "ABC";
+     voltage_A 7967.4+0d;
+     voltage_B 7967.4-120d;
+     voltage_C 7967.4+120d;
+     nominal_voltage 7967.4; 
+}
+
+object node { 
+     name barra_20;
+     phases "ABC";
+     voltage_A 7967.4+0d;
+     voltage_B 7967.4-120d;
+     voltage_C 7967.4+120d;
+     nominal_voltage 7967.4; 
+}
+
+object node { 
+     name barra_21;
+     phases "ABC";
+     voltage_A 7967.4+0d;
+     voltage_B 7967.4-120d;
+     voltage_C 7967.4+120d;
+     nominal_voltage 7967.4; 
+}
+
+object node { 
+     name barra_22;
+     phases "ABC";
+     voltage_A 7967.4+0d;
+     voltage_B 7967.4-120d;
+     voltage_C 7967.4+120d;
+     nominal_voltage 7967.4; 
+}
+
+object node { 
+     name barra_23;
+     phases "ABC";
+     voltage_A 7967.4+0d;
+     voltage_B 7967.4-120d;
+     voltage_C 7967.4+120d;
+     nominal_voltage 7967.4; 
+}
+
+object node { 
+     name barra_24;
+     phases "ABC";
+     voltage_A 7967.4+0d;
+     voltage_B 7967.4-120d;
+     voltage_C 7967.4+120d;
+     nominal_voltage 7967.4; 
+}
+
+object node { 
+     name barra_25;
+     phases "ABC";
+     voltage_A 7967.4+0d;
+     voltage_B 7967.4-120d;
+     voltage_C 7967.4+120d;
+     nominal_voltage 7967.4; 
+}
+
+object node { 
+     name barra_26;
+     phases "ABC";
+     voltage_A 7967.4+0d;
+     voltage_B 7967.4-120d;
+     voltage_C 7967.4+120d;
+     nominal_voltage 7967.4; 
+}
+
+object node { 
+     name barra_27;
+     phases "ABC";
+     voltage_A 7967.4+0d;
+     voltage_B 7967.4-120d;
+     voltage_C 7967.4+120d;
+     nominal_voltage 7967.4; 
+}
+
+
+//---------------- DECLARAÇÃO DAS BARRAS - ALIMENTADOR PIQUIRI--------------------------//
+
+//------- BARRAS DOS TRANSFORMADORES ---------//
+
+object node { 
+     name barra_trafo_43;
+     phases "ABC";
+     voltage_A 7967.4+0d;
+     voltage_B 7967.4-120d;
+     voltage_C 7967.4+120d;
+     nominal_voltage 7967.4; 
+}
+
+object node { 
+     name barra_trafo_44;
+     phases "ABC";
+     voltage_A 7967.4+0d;
+     voltage_B 7967.4-120d;
+     voltage_C 7967.4+120d;
+     nominal_voltage 7967.4; 
+}
+
+object node { 
+     name barra_trafo_45;
+     phases "ABC";
+     voltage_A 7967.4+0d;
+     voltage_B 7967.4-120d;
+     voltage_C 7967.4+120d;
+     nominal_voltage 7967.4; 
+}
+
+object node { 
+     name barra_trafo_46;
+     phases "ABC";
+     voltage_A 7967.4+0d;
+     voltage_B 7967.4-120d;
+     voltage_C 7967.4+120d;
+     nominal_voltage 7967.4; 
+}
+
+object node { 
+     name barra_trafo_47;
+     phases "ABC";
+     voltage_A 7967.4+0d;
+     voltage_B 7967.4-120d;
+     voltage_C 7967.4+120d;
+     nominal_voltage 7967.4; 
+}
+
+object node { 
+     name barra_trafo_48;
+     phases "ABC";
+     voltage_A 7967.4+0d;
+     voltage_B 7967.4-120d;
+     voltage_C 7967.4+120d;
+     nominal_voltage 7967.4; 
+}
+
+object node { 
+     name barra_trafo_49;
+     phases "AC";
+     voltage_A 7967.4+0d;
+     voltage_C 7967.4+120d;
+     nominal_voltage 7967.4; 
+}
+
+object node { 
+     name barra_trafo_50;
+     phases "AC";
+     voltage_A 7967.4+0d;
+     voltage_C 7967.4+120d;
+     nominal_voltage 7967.4; 
+}
+
+object node { 
+     name barra_trafo_51;
+     phases "AC";
+     voltage_A 7967.4+0d;
+     voltage_C 7967.4+120d;
+     nominal_voltage 7967.4; 
+}
+
+object node { 
+     name barra_trafo_52;
+     phases "AC";
+     voltage_A 7967.4+0d;
+     voltage_C 7967.4+120d;
+     nominal_voltage 7967.4; 
+}
+
+object node { 
+     name barra_trafo_53;
+     phases "AC";
+     voltage_A 7967.4+0d;
+     voltage_C 7967.4+120d;
+     nominal_voltage 7967.4; 
+}
+
+object node { 
+     name barra_trafo_54;
+     phases "AC";
+     voltage_A 7967.4+0d;
+     voltage_C 7967.4+120d;
+     nominal_voltage 7967.4; 
+}
+
+object node { 
+     name barra_trafo_55;
+     phases "AC";
+     voltage_A 7967.4+0d;
+     voltage_C 7967.4+120d;
+     nominal_voltage 7967.4; 
+}
+
+object node { 
+     name barra_trafo_56;
+     phases "AC";
+     voltage_A 7967.4+0d;
+     voltage_C 7967.4+120d;
+     nominal_voltage 7967.4; 
+}
+
+object node { 
+     name barra_trafo_57;
+     phases "AC";
+     voltage_A 7967.4+0d;
+     voltage_C 7967.4+120d;
+     nominal_voltage 7967.4; 
+}
+
+object node { 
+     name barra_trafo_58;
+     phases "AC";
+     voltage_A 7967.4+0d;
+     voltage_C 7967.4+120d;
+     nominal_voltage 7967.4; 
+}
+
+object node { 
+     name barra_trafo_59;
+     phases "AC";
+     voltage_A 7967.4+0d;
+     voltage_C 7967.4+120d;
+     nominal_voltage 7967.4; 
+}
+
+object node { 
+     name barra_trafo_60;
+     phases "AC";
+     voltage_A 7967.4+0d;
+     voltage_C 7967.4+120d;
+     nominal_voltage 7967.4; 
+}
+
+object node { 
+     name barra_trafo_61;
+     phases "AC";
+     voltage_A 7967.4+0d;
+     voltage_C 7967.4+120d;
+     nominal_voltage 7967.4; 
+}
+
+object node { 
+     name barra_trafo_62;
+     phases "AC";
+     voltage_A 7967.4+0d;
+     voltage_C 7967.4+120d;
+     nominal_voltage 7967.4; 
+}
+
+object node { 
+     name barra_trafo_63;
+     phases "AC";
+     voltage_A 7967.4+0d;
+     voltage_C 7967.4+120d;
+     nominal_voltage 7967.4; 
+}
+
+object node { 
+     name barra_trafo_64;
+     phases "AC";
+     voltage_A 7967.4+0d;
+     voltage_C 7967.4+120d;
+     nominal_voltage 7967.4; 
+}
+
+object node { 
+     name barra_trafo_65;
+     phases "AC";
+     voltage_A 7967.4+0d;
+     voltage_C 7967.4+120d;
+     nominal_voltage 7967.4; 
+}
+
+object node { 
+     name barra_trafo_66;
+     phases "AC";
+     voltage_A 7967.4+0d;
+     voltage_C 7967.4+120d;
+     nominal_voltage 7967.4; 
+}
+
+object node { 
+     name barra_trafo_67;
+     phases "AC";
+     voltage_A 7967.4+0d;
+     voltage_C 7967.4+120d;
+     nominal_voltage 7967.4; 
+}
+
+object node { 
+     name barra_trafo_68;
+     phases "AC";
+     voltage_A 7967.4+0d;
+     voltage_C 7967.4+120d;
+     nominal_voltage 7967.4; 
+}
+
+object node { 
+     name barra_trafo_69;
+     phases "AC";
+     voltage_A 7967.4+0d;
+     voltage_C 7967.4+120d;
+     nominal_voltage 7967.4; 
+}
+
+object node { 
+     name barra_trafo_70;
+     phases "AC";
+     voltage_A 7967.4+0d;
+     voltage_C 7967.4+120d;
+     nominal_voltage 7967.4; 
+}
+
+object node { 
+     name barra_trafo_71;
+     phases "AC";
+     voltage_A 7967.4+0d;
+     voltage_C 7967.4+120d;
+     nominal_voltage 7967.4; 
+}
+
+object node { 
+     name barra_trafo_72;
+     phases "AC";
+     voltage_A 7967.4+0d;
+     voltage_C 7967.4+120d;
+     nominal_voltage 7967.4; 
+}
+
+object node { 
+     name barra_trafo_73;
+     phases "AC";
+     voltage_A 7967.4+0d;
+     voltage_C 7967.4+120d;
+     nominal_voltage 7967.4; 
+}
+
+object node { 
+     name barra_trafo_74;
+     phases "AC";
+     voltage_A 7967.4+0d;
+     voltage_C 7967.4+120d;
+     nominal_voltage 7967.4; 
+}
+
+object node { 
+     name barra_trafo_75;
+     phases "AC";
+     voltage_A 7967.4+0d;
+     voltage_C 7967.4+120d;
+     nominal_voltage 7967.4; 
+}
+
+object node { 
+     name barra_trafo_76;
+     phases "AC";
+     voltage_A 7967.4+0d;
+     voltage_C 7967.4+120d;
+     nominal_voltage 7967.4; 
+}
+
+object node { 
+     name barra_trafo_77;
+     phases "AC";
+     voltage_A 7967.4+0d;
+     voltage_C 7967.4+120d;
+     nominal_voltage 7967.4; 
+}
+
+object node { 
+     name barra_trafo_78;
+     phases "AC";
+     voltage_A 7967.4+0d;
+     voltage_C 7967.4+120d;
+     nominal_voltage 7967.4; 
+}
+
+object node { 
+     name barra_trafo_79;
+     phases "AC";
+     voltage_A 7967.4+0d;
+     voltage_C 7967.4+120d;
+     nominal_voltage 7967.4; 
+}
+
+object node { 
+     name barra_trafo_80;
+     phases "AC";
+     voltage_A 7967.4+0d;
+     voltage_C 7967.4+120d;
+     nominal_voltage 7967.4; 
+}
+
+object node { 
+     name barra_trafo_81;
+     phases "AC";
+     voltage_A 7967.4+0d;
+     voltage_C 7967.4+120d;
+     nominal_voltage 7967.4; 
+}
+
+object node { 
+     name barra_trafo_82;
+     phases "AC";
+     voltage_A 7967.4+0d;
+     voltage_C 7967.4+120d;
+     nominal_voltage 7967.4; 
+}
+
+object node { 
+     name barra_trafo_83;
+     phases "AC";
+     voltage_A 7967.4+0d;
+     voltage_C 7967.4+120d;
+     nominal_voltage 7967.4; 
+}
+
+object node { 
+     name barra_trafo_84;
+     phases "AC";
+     voltage_A 7967.4+0d;
+     voltage_C 7967.4+120d;
+     nominal_voltage 7967.4; 
+}
+
+object node { 
+     name barra_trafo_85;
+     phases "AC";
+     voltage_A 7967.4+0d;
+     voltage_C 7967.4+120d;
+     nominal_voltage 7967.4; 
+}
+
+object node { 
+     name barra_trafo_86;
+     phases "AC";
+     voltage_A 7967.4+0d;
+     voltage_C 7967.4+120d;
+     nominal_voltage 7967.4; 
+}
+
+object node { 
+     name barra_trafo_87;
+     phases "AC";
+     voltage_A 7967.4+0d;
+     voltage_C 7967.4+120d;
+     nominal_voltage 7967.4; 
+}
+
+object node { 
+     name barra_trafo_88;
+     phases "AC";
+     voltage_A 7967.4+0d;
+     voltage_C 7967.4+120d;
+     nominal_voltage 7967.4; 
+}
+
+object node { 
+     name barra_trafo_89;
+     phases "ABC";
+     voltage_A 7967.4+0d;
+     voltage_B 7967.4-120d;
+     voltage_C 7967.4+120d;
+     nominal_voltage 7967.4; 
+}
+
+//------- BARRAS DE DERIVAÇÃO --------//
+
+object node { 
+     name barra_28;
+     phases "ABC";
+     voltage_A 7967.4+0d;
+     voltage_B 7967.4-120d;
+     voltage_C 7967.4+120d;
+     nominal_voltage 7967.4; 
+}
+
+object node { 
+     name barra_29;
+     phases "ABC";
+     voltage_A 7967.4+0d;
+     voltage_B 7967.4-120d;
+     voltage_C 7967.4+120d;
+     nominal_voltage 7967.4; 
+}
+
+object node { 
+     name barra_30;
+     phases "ABC";
+     voltage_A 7967.4+0d;
+     voltage_B 7967.4-120d;
+     voltage_C 7967.4+120d;
+     nominal_voltage 7967.4; 
+}
+
+object node { 
+     name barra_31;
+     phases "ABC";
+     voltage_A 7967.4+0d;
+     voltage_B 7967.4-120d;
+     voltage_C 7967.4+120d;
+     nominal_voltage 7967.4; 
+}
+
+object node { 
+     name barra_32;
+     phases "ABC";
+     voltage_A 7967.4+0d;
+     voltage_B 7967.4-120d;
+     voltage_C 7967.4+120d;
+     nominal_voltage 7967.4; 
+}
+
+object node { 
+     name barra_33;
+     phases "ABC";
+     voltage_A 7967.4+0d;
+     voltage_B 7967.4-120d;
+     voltage_C 7967.4+120d;
+     nominal_voltage 7967.4; 
+}
+
+object node { 
+     name barra_34;
+     phases "ABC";
+     voltage_A 7967.4+0d;
+     voltage_B 7967.4-120d;
+     voltage_C 7967.4+120d;
+     nominal_voltage 7967.4; 
+}
+
+object node { 
+     name barra_35;
+     phases "AC";
+     voltage_A 7967.4+0d;
+     voltage_C 7967.4+120d;
+     nominal_voltage 7967.4; 
+}
+
+object node { 
+     name barra_36;
+     phases "AC";
+     voltage_A 7967.4+0d;
+     voltage_C 7967.4+120d;
+     nominal_voltage 7967.4; 
+}
+
+object node { 
+     name barra_37;
+     phases "AC";
+     voltage_A 7967.4+0d;
+     voltage_C 7967.4+120d;
+     nominal_voltage 7967.4; 
+}
+
+object node { 
+     name barra_38;
+     phases "AC";
+     voltage_A 7967.4+0d;
+     voltage_C 7967.4+120d;
+     nominal_voltage 7967.4; 
+}
+
+object node { 
+     name barra_39;
+     phases "AC";
+     voltage_A 7967.4+0d;
+     voltage_C 7967.4+120d;
+     nominal_voltage 7967.4; 
+}
+
+object node { 
+     name barra_40;
+     phases "AC";
+     voltage_A 7967.4+0d;
+     voltage_C 7967.4+120d;
+     nominal_voltage 7967.4; 
+}
+
+object node { 
+     name barra_41;
+     phases "AC";
+     voltage_A 7967.4+0d;
+     voltage_C 7967.4+120d;
+     nominal_voltage 7967.4; 
+}
+
+object node { 
+     name barra_42;
+     phases "AC";
+     voltage_A 7967.4+0d;
+     voltage_C 7967.4+120d;
+     nominal_voltage 7967.4; 
+}
+
+object node { 
+     name barra_43;
+     phases "AC";
+     voltage_A 7967.4+0d;
+     voltage_C 7967.4+120d;
+     nominal_voltage 7967.4; 
+}
+
+object node { 
+     name barra_44;
+     phases "AC";
+     voltage_A 7967.4+0d;
+     voltage_C 7967.4+120d;
+     nominal_voltage 7967.4; 
+}
+
+object node { 
+     name barra_45;
+     phases "AC";
+     voltage_A 7967.4+0d;
+     voltage_C 7967.4+120d;
+     nominal_voltage 7967.4; 
+}
+
+
+//---------------- DECLARAÇÃO TRANSFORMADORES ------------------------------------------//
+
+object transformer {
+	phases "ABC";
+  	name trafo_1;
+  	from barra_trafo_1;
+  	to carga_1;
+  	configuration config_1;
+}
+
+object transformer {
+	phases "ABC";
+  	name trafo_2;
+  	from barra_trafo_2;
+  	to carga_2;
+  	configuration config_1;	
+}
+object transformer {
+	phases "ABC";
+  	name trafo_4;
+  	from barra_trafo_4;
+  	to carga_4;
+  	configuration config_4;
+}
+
+object transformer {
+	phases "ABC";
+  	name trafo_6;
+  	from barra_trafo_6;
+  	to carga_6;
+  	configuration config_3;
+}
+
+object transformer {
+	phases "ABC";
+  	name trafo_7;
+  	from barra_trafo_7;
+  	to carga_7;
+  	configuration config_3;
+}
+
+object transformer {
+	phases "ABC";
+  	name trafo_8;
+  	from barra_trafo_8;
+  	to carga_8;
+  	configuration config_3;
+}
+
+object transformer {
+	phases "ABC";
+  	name trafo_9;
+  	from barra_trafo_9;
+  	to carga_9;
+  	configuration config_4;
+}
+
+object transformer {
+	phases "ABC";
+  	name trafo_10;
+  	from barra_trafo_10;
+  	to carga_10;
+  	configuration config_1;
+}
+
+object transformer {
+	phases "ABC";
+  	name trafo_11;
+  	from barra_trafo_11;
+  	to carga_11;
+  	configuration config_1;
+}
+
+object transformer {
+	phases "ABC";
+  	name trafo_12;
+  	from barra_trafo_12;
+  	to carga_12;
+  	configuration config_3;
+}
+
+object transformer {
+	phases "ABC";
+  	name trafo_13;
+  	from barra_trafo_13;
+  	to carga_13;
+  	configuration config_3;
+}
+
+object transformer {
+	phases "ABC";
+  	name trafo_14;
+  	from barra_trafo_14;
+  	to carga_14;
+  	configuration config_3;
+}
+
+object transformer {
+	phases "ABC";
+  	name trafo_15;
+  	from barra_trafo_15;
+  	to carga_15;
+  	configuration config_3;
+}
+
+object transformer {
+	phases "ABC";
+  	name trafo_16;
+  	from barra_trafo_16;
+  	to carga_16;
+  	configuration config_4;
+}
+
+object transformer {
+	phases "ABC";
+  	name trafo_17;
+  	from barra_trafo_17;
+  	to carga_17;
+  	configuration config_4;
+}
+
+object transformer {
+	phases "ABC";
+  	name trafo_18;
+  	from barra_trafo_18;
+  	to carga_18;
+  	configuration config_1;
+}
+
+object transformer {
+	phases "ABC";
+  	name trafo_27;
+  	from barra_trafo_27;
+  	to carga_27;
+  	configuration config_4;
+}
+object transformer {
+	phases "ABC";
+  	name trafo_28;
+  	from barra_trafo_28;
+  	to carga_28;
+  	configuration config_3;
+}
+object transformer {
+	phases "ABC";
+  	name trafo_29;
+  	from barra_trafo_29;
+  	to carga_29;
+  	configuration config_1;
+}
+object transformer {
+	phases "ABC";
+  	name trafo_30;
+  	from barra_trafo_30;
+  	to carga_30;
+  	configuration config_3;
+}
+
+object transformer {
+	phases "ABC";
+  	name trafo_31;
+  	from barra_trafo_31;
+  	to carga_31;
+  	configuration config_4;
+}
+
+object transformer {
+	phases "ABC";
+  	name trafo_32;
+  	from barra_trafo_32;
+  	to carga_32;
+  	configuration config_3;
+}
+
+object transformer {
+	phases "ABC";
+  	name trafo_33;
+  	from barra_trafo_33;
+  	to carga_33;
+  	configuration config_2;
+}
+
+object transformer {
+	phases "ABC";
+  	name trafo_34;
+  	from barra_trafo_34;
+  	to carga_34;
+  	configuration config_3;
+}
+
+object transformer {
+	phases "ABC";
+  	name trafo_35;
+  	from barra_trafo_35;
+  	to carga_35;
+  	configuration config_3;
+}
+
+object transformer {
+	phases "ABC";
+  	name trafo_36;
+  	from barra_trafo_36;
+  	to carga_36;
+  	configuration config_3;
+}
+
+object transformer {
+	phases "ABC";
+  	name trafo_37;
+  	from barra_trafo_37;
+  	to carga_37;
+  	configuration config_3;
+}
+
+object transformer {
+	phases "ABC";
+  	name trafo_38;
+  	from barra_trafo_38;
+  	to carga_38;
+  	configuration config_3;
+}
+
+object transformer {
+	phases "ABC";
+  	name trafo_40;
+  	from barra_trafo_40;
+  	to carga_40;
+  	configuration config_3;
+}
+
+object transformer {
+	phases "ABC";
+  	name trafo_41;
+  	from barra_trafo_41;
+  	to carga_41;
+  	configuration config_3;
+}
+
+object transformer {
+	phases "ABC";
+  	name trafo_42;
+  	from barra_trafo_42;
+  	to carga_42;
+  	configuration config_3;
+}
+
+object transformer {
+	phases "ABC";
+  	name trafo_43;
+  	from barra_trafo_43;
+  	to carga_43;
+  	configuration config_4;
+}
+
+object transformer {
+	phases "ABC";
+  	name trafo_44;
+  	from barra_trafo_44;
+  	to carga_44;
+  	configuration config_3;
+}
+
+object transformer {
+	phases "ABC";
+  	name trafo_45;
+  	from barra_trafo_45;
+  	to carga_45;
+  	configuration config_1;
+}
+
+object transformer {
+	phases "ABC";
+  	name trafo_46;
+  	from barra_trafo_46;
+  	to carga_46;
+  	configuration config_4;
+}
+
+object transformer {
+	phases "ABC";
+  	name trafo_47;
+  	from barra_trafo_47;
+  	to carga_47;
+  	configuration config_1;
+}
+
+object transformer {
+	phases "ABC";
+  	name trafo_48;
+  	from barra_trafo_48;
+  	to carga_48;
+  	configuration config_1;
+}
+
+object transformer {
+	phases "AC";
+  	name trafo_49;
+  	from barra_trafo_49;
+  	to carga_49;
+  	configuration config_5;
+}
+
+object transformer {
+	phases "AC";
+  	name trafo_50;
+  	from barra_trafo_50;
+  	to carga_50;
+  	configuration config_5;
+}
+
+object transformer {
+	phases "AC";
+  	name trafo_51;
+  	from barra_trafo_51;
+  	to carga_51;
+  	configuration config_6;
+}
+
+object transformer {
+	phases "AC";
+  	name trafo_52;
+  	from barra_trafo_52;
+  	to carga_52;
+  	configuration config_7;
+}
+
+object transformer {
+	phases "AC";
+  	name trafo_53;
+  	from barra_trafo_53;
+  	to carga_53;
+  	configuration config_8;
+}
+
+object transformer {
+	phases "AC";
+  	name trafo_54;
+  	from barra_trafo_54;
+  	to carga_54;
+  	configuration config_7;
+}
+
+object transformer {
+	phases "AC";
+  	name trafo_55;
+  	from barra_trafo_55;
+  	to carga_55;
+  	configuration config_6;
+}
+
+object transformer {
+	phases "AC";
+  	name trafo_56;
+  	from barra_trafo_56;
+  	to carga_56;
+  	configuration config_5;
+}
+
+object transformer {
+	phases "AC";
+  	name trafo_57;
+  	from barra_trafo_57;
+  	to carga_57;
+  	configuration config_8;
+}
+
+object transformer {
+	phases "AC";
+  	name trafo_58;
+  	from barra_trafo_58;
+  	to carga_58;
+  	configuration config_7;
+}
+
+object transformer {
+	phases "AC";
+  	name trafo_59;
+  	from barra_trafo_59;
+  	to carga_59;
+  	configuration config_5;
+}
+
+object transformer {
+	phases "AC";
+  	name trafo_60;
+  	from barra_trafo_60;
+  	to carga_60;
+  	configuration config_5;
+}
+
+object transformer {
+	phases "AC";
+  	name trafo_61;
+  	from barra_trafo_61;
+  	to carga_61;
+  	configuration config_6;
+}
+
+object transformer {
+	phases "AC";
+  	name trafo_62;
+  	from barra_trafo_62;
+  	to carga_62;
+  	configuration config_8;
+}
+
+object transformer {
+	phases "AC";
+  	name trafo_63;
+  	from barra_trafo_63;
+  	to carga_63;
+  	configuration config_5;
+}
+
+object transformer {
+	phases "AC";
+  	name trafo_64;
+  	from barra_trafo_64;
+  	to carga_64;
+  	configuration config_5;
+}
+
+object transformer {
+	phases "AC";
+  	name trafo_65;
+  	from barra_trafo_65;
+  	to carga_65;
+  	configuration config_9;
+}
+
+object transformer {
+	phases "AC";
+  	name trafo_66;
+  	from barra_trafo_66;
+  	to carga_66;
+  	configuration config_5;
+}
+
+object transformer {
+	phases "AC";
+  	name trafo_67;
+  	from barra_trafo_67;
+  	to carga_67;
+  	configuration config_5;
+}
+
+object transformer {
+	phases "AC";
+  	name trafo_68;
+  	from barra_trafo_68;
+  	to carga_68;
+  	configuration config_6;
+}
+
+object transformer {
+	phases "AC";
+  	name trafo_69;
+  	from barra_trafo_69;
+  	to carga_69;
+  	configuration config_5;
+}
+
+object transformer {
+	phases "AC";
+  	name trafo_70;
+  	from barra_trafo_70;
+  	to carga_70;
+  	configuration config_5;
+}
+
+object transformer {
+	phases "AC";
+  	name trafo_71;
+  	from barra_trafo_71;
+  	to carga_71;
+  	configuration config_8;
+}
+
+object transformer {
+	phases "AC";
+  	name trafo_72;
+  	from barra_trafo_72;
+  	to carga_72;
+  	configuration config_5;
+}
+
+object transformer {
+	phases "AC";
+  	name trafo_73;
+  	from barra_trafo_73;
+  	to carga_73;
+  	configuration config_6;
+}
+
+object transformer {
+	phases "AC";
+  	name trafo_74;
+  	from barra_trafo_74;
+  	to carga_74;
+  	configuration config_5;
+}
+
+object transformer {
+	phases "AC";
+  	name trafo_75;
+  	from barra_trafo_75;
+  	to carga_75;
+  	configuration config_5;
+}
+
+object transformer {
+	phases "AC";
+  	name trafo_76;
+  	from barra_trafo_76;
+  	to carga_76;
+  	configuration config_5;
+}
+
+object transformer {
+	phases "AC";
+  	name trafo_77;
+  	from barra_trafo_77;
+  	to carga_77;
+  	configuration config_10;
+}
+
+object transformer {
+	phases "AC";
+  	name trafo_78;
+  	from barra_trafo_78;
+  	to carga_78;
+  	configuration config_6;
+}
+
+object transformer {
+	phases "AC";
+  	name trafo_79;
+  	from barra_trafo_79;
+  	to carga_79;
+  	configuration config_5;
+}
+
+object transformer {
+	phases "AC";
+  	name trafo_80;
+  	from barra_trafo_80;
+  	to carga_80;
+  	configuration config_8;
+}
+
+object transformer {
+	phases "AC";
+  	name trafo_81;
+  	from barra_trafo_81;
+  	to carga_81;
+  	configuration config_8;
+}
+
+object transformer {
+	phases "AC";
+  	name trafo_82;
+  	from barra_trafo_82;
+  	to carga_82;
+  	configuration config_5;
+}
+
+object transformer {
+	phases "AC";
+  	name trafo_83;
+  	from barra_trafo_83;
+  	to carga_83;
+  	configuration config_5;
+}
+
+object transformer {
+	phases "AC";
+  	name trafo_84;
+  	from barra_trafo_84;
+  	to carga_84;
+  	configuration config_5;
+}
+
+object transformer {
+	phases "AC";
+  	name trafo_85;
+  	from barra_trafo_85;
+  	to carga_85;
+  	configuration config_7;
+}
+
+object transformer {
+	phases "AC";
+  	name trafo_86;
+  	from barra_trafo_86;
+  	to carga_86;
+  	configuration config_7;
+}
+
+object transformer {
+	phases "ABC";
+  	name trafo_89;
+  	from barra_trafo_89;
+  	to carga_89;
+  	configuration config_4;
+}
+
+
+//---------------------- DECLARAÇÃO DAS CARGAS ------------------------------//
+
+object load {  
+     name carga_1;
+     phases "ABC";
+     voltage_A  127+0d; 
+     voltage_B 127-120d;
+     voltage_C 127+120d;
+	 object player {                   
+		file Carga_1.txt;
+		property constant_power_A, constant_power_B, constant_power_C;	
+	};
+     nominal_voltage 220.000;
+}
+
+object load {  
+     name carga_2;
+     phases "ABC";
+     voltage_A  127+0d; 
+     voltage_B 127-120d;
+     voltage_C 127+120d;
+	 object player {                   
+		file Carga_2.txt;
+		property constant_power_A, constant_power_B, constant_power_C;	
+	};
+     nominal_voltage 220.000;
+}
+
+object load {  
+     name carga_4;
+     phases "ABC";
+     voltage_A  127+0d; 
+     voltage_B 127-120d;
+     voltage_C 127+120d;
+     object player {                   
+		file Carga_4.txt;
+		property constant_power_A, constant_power_B, constant_power_C;	
+	};
+     nominal_voltage 220.000;
+}
+
+object load {  
+     name carga_6;
+     phases "ABC";
+     voltage_A  127+0d; 
+     voltage_B 127-120d;
+     voltage_C 127+120d;
+	 object player {                   
+		file Carga_6.txt;
+		property constant_power_A, constant_power_B, constant_power_C;	
+	};
+     nominal_voltage 220.000;
+}
+
+object load {  
+     name carga_7;
+     phases "ABC";
+     voltage_A  127+0d; 
+     voltage_B 127-120d;
+     voltage_C 127+120d;
+     object player {                   
+		file Carga_7.txt;
+		property constant_power_A, constant_power_B, constant_power_C;	
+	};
+     nominal_voltage 220.000;
+}
+
+object load {  
+     name carga_8;
+     phases "ABC";
+     voltage_A  127+0d; 
+     voltage_B 127-120d;
+     voltage_C 127+120d;
+     object player {                   
+		file Carga_8.txt;
+		property constant_power_A, constant_power_B, constant_power_C;	
+	};
+     nominal_voltage 220.000;
+}
+
+object load {  
+     name carga_9;
+     phases "ABC";
+     voltage_A  127+0d; 
+     voltage_B 127-120d;
+     voltage_C 127+120d;
+     object player {                   
+		file Carga_9.txt;
+		property constant_power_A, constant_power_B, constant_power_C;	
+	};
+     nominal_voltage 220.000;
+}
+
+object load {  
+     name carga_10;
+     phases "ABC";
+     voltage_A  127+0d; 
+     voltage_B 127-120d;
+     voltage_C 127+120d;
+     object player {                   
+		file Carga_10.txt;
+		property constant_power_A, constant_power_B, constant_power_C;	
+	};
+     nominal_voltage 220.000;
+}
+
+object load {  
+     name carga_11;
+     phases "ABC";
+     voltage_A  127+0d; 
+     voltage_B 127-120d;
+     voltage_C 127+120d;
+     object player {                   
+		file Carga_11.txt;
+		property constant_power_A, constant_power_B, constant_power_C;	
+	};
+     nominal_voltage 220.000;
+}
+
+object load {  
+     name carga_12;
+     phases "ABC";
+     voltage_A  127+0d; 
+     voltage_B 127-120d;
+     voltage_C 127+120d;
+     object player {                   
+		file Carga_12.txt;
+		property constant_power_A, constant_power_B, constant_power_C;	
+	};
+     nominal_voltage 220.000;
+}
+
+object load {  
+     name carga_13;
+     phases "ABC";
+     voltage_A  127+0d; 
+     voltage_B 127-120d;
+     voltage_C 127+120d;
+     object player {                   
+		file Carga_13.txt;
+		property constant_power_A, constant_power_B, constant_power_C;	
+	};
+     nominal_voltage 220.000;
+}
+
+object load {  
+     name carga_14;
+     phases "ABC";
+     voltage_A  127+0d; 
+     voltage_B 127-120d;
+     voltage_C 127+120d;
+     object player {                   
+		file Carga_14.txt;
+		property constant_power_A, constant_power_B, constant_power_C;	
+	};
+     nominal_voltage 220.000;
+}
+
+object load {  
+     name carga_15;
+     phases "ABC";
+     voltage_A  127+0d; 
+     voltage_B 127-120d;
+     voltage_C 127+120d;
+     object player {                   
+		file Carga_15.txt;
+		property constant_power_A, constant_power_B, constant_power_C;	
+	};
+     nominal_voltage 220.000;
+}
+
+object load {  
+     name carga_16;
+     phases "ABC";
+     voltage_A  127+0d; 
+     voltage_B 127-120d;
+     voltage_C 127+120d;
+     object player {                   
+		file Carga_16.txt;
+		property constant_power_A, constant_power_B, constant_power_C;	
+	};
+     nominal_voltage 220.000;
+}
+
+object load {  
+     name carga_17;
+     phases "ABC";
+     voltage_A  127+0d; 
+     voltage_B 127-120d;
+     voltage_C 127+120d;
+     object player {                   
+		file Carga_17.txt;
+		property constant_power_A, constant_power_B, constant_power_C;	
+	};
+     nominal_voltage 220.000;
+}
+
+object load {  
+     name carga_18;
+     phases "ABC";
+     voltage_A  127+0d; 
+     voltage_B 127-120d;
+     voltage_C 127+120d;
+     object player {                   
+		file Carga_18.txt;
+		property constant_power_A, constant_power_B, constant_power_C;	
+	};
+     nominal_voltage 220.000;
+}
+
+object load {  
+     name carga_27;
+     phases "ABC";
+     voltage_A  127+0d; 
+     voltage_B 127-120d;
+     voltage_C 127+120d;
+     object player {                   
+		file Carga_27.txt;
+		property constant_power_A, constant_power_B, constant_power_C;	
+	};
+     nominal_voltage 220.000;
+}
+
+object load {  
+     name carga_28;
+     phases "ABC";
+     voltage_A  127+0d; 
+     voltage_B 127-120d;
+     voltage_C 127+120d;
+     object player {                   
+		file Carga_28.txt;
+		property constant_power_A, constant_power_B, constant_power_C;	
+	};
+     nominal_voltage 220.000;
+}
+
+object load {  
+     name carga_29;
+     phases "ABC";
+     voltage_A  127+0d; 
+     voltage_B 127-120d;
+     voltage_C 127+120d;
+     object player {                   
+		file Carga_29.txt;
+		property constant_power_A, constant_power_B, constant_power_C;	
+	};
+     nominal_voltage 220.000;
+}
+
+object load {  
+     name carga_30;
+     phases "ABC";
+     voltage_A  127+0d; 
+     voltage_B 127-120d;
+     voltage_C 127+120d;
+     object player {                   
+		file Carga_30.txt;
+		property constant_power_A, constant_power_B, constant_power_C;	
+	};
+     nominal_voltage 220.000;
+}
+
+object load {  
+     name carga_31;
+     phases "ABC";
+     voltage_A  127+0d; 
+     voltage_B 127-120d;
+     voltage_C 127+120d;
+     object player {                   
+		file Carga_31.txt;
+		property constant_power_A, constant_power_B, constant_power_C;	
+	};
+     nominal_voltage 220.000;
+}
+
+object load {  
+     name carga_32;
+     phases "ABC";
+     voltage_A  127+0d; 
+     voltage_B 127-120d;
+     voltage_C 127+120d;
+     object player {                   
+		file Carga_32.txt;
+		property constant_power_A, constant_power_B, constant_power_C;	
+	};
+     nominal_voltage 220.000;
+}
+
+object load {  
+     name carga_33;
+     phases "ABC";
+     voltage_A  127+0d; 
+     voltage_B 127-120d;
+     voltage_C 127+120d;
+     object player {                   
+		file Carga_33.txt;
+		property constant_power_A, constant_power_B, constant_power_C;	
+	};
+     nominal_voltage 220.000;
+}
+
+object load {  
+     name carga_34;
+     phases "ABC";
+     voltage_A  127+0d; 
+     voltage_B 127-120d;
+     voltage_C 127+120d;
+     object player {                   
+		file Carga_34.txt;
+		property constant_power_A, constant_power_B, constant_power_C;	
+	};
+     nominal_voltage 220.000;
+}
+
+object load {  
+     name carga_35;
+     phases "ABC";
+     voltage_A  127+0d; 
+     voltage_B 127-120d;
+     voltage_C 127+120d;
+     object player {                   
+		file Carga_35.txt;
+		property constant_power_A, constant_power_B, constant_power_C;	
+	};
+     nominal_voltage 220.000;
+}
+
+object load {  
+     name carga_36;
+     phases "ABC";
+     voltage_A  127+0d; 
+     voltage_B 127-120d;
+     voltage_C 127+120d;
+     object player {                   
+		file Carga_36.txt;
+		property constant_power_A, constant_power_B, constant_power_C;	
+	};
+     nominal_voltage 220.000;
+}
+
+object load {  
+     name carga_37;
+     phases "ABC";
+     voltage_A  127+0d; 
+     voltage_B 127-120d;
+     voltage_C 127+120d;
+     object player {                   
+		file Carga_37.txt;
+		property constant_power_A, constant_power_B, constant_power_C;	
+	};
+     nominal_voltage 220.000;
+}
+
+object load {  
+     name carga_38;
+     phases "ABC";
+     voltage_A  127+0d; 
+     voltage_B 127-120d;
+     voltage_C 127+120d;
+     object player {                   
+		file Carga_38.txt;
+		property constant_power_A, constant_power_B, constant_power_C;	
+	};
+     nominal_voltage 220.000;
+}
+
+
+object load {  
+     name carga_40;
+     phases "ABC";
+     voltage_A  127+0d; 
+     voltage_B 127-120d;
+     voltage_C 127+120d;
+     object player {                   
+		file Carga_40.txt;
+		property constant_power_A, constant_power_B, constant_power_C;	
+	};
+     nominal_voltage 220.000;
+}
+
+object load {  
+     name carga_41;
+     phases "ABC";
+     voltage_A  127+0d; 
+     voltage_B 127-120d;
+     voltage_C 127+120d;
+     object player {                   
+		file Carga_41.txt;
+		property constant_power_A, constant_power_B, constant_power_C;	
+	};
+     nominal_voltage 220.000;
+}
+
+object load {  
+     name carga_42;
+     phases "ABC";
+     voltage_A  127+0d; 
+     voltage_B 127-120d;
+     voltage_C 127+120d;
+     object player {                   
+		file Carga_42.txt;
+		property constant_power_A, constant_power_B, constant_power_C;	
+	};
+     nominal_voltage 220.000;
+}
+
+object load {  
+     name carga_43;
+     phases "ABC";
+     voltage_A  127+0d; 
+     voltage_B 127-120d;
+     voltage_C 127+120d;
+     object player {                   
+		file Carga_43.txt;
+		property constant_power_A, constant_power_B, constant_power_C;	
+	};
+     nominal_voltage 220.000;
+}
+
+object load {  
+     name carga_44;
+     phases "ABC";
+     voltage_A  127+0d; 
+     voltage_B 127-120d;
+     voltage_C 127+120d;
+     object player {                   
+		file Carga_44.txt;
+		property constant_power_A, constant_power_B, constant_power_C;	
+	};
+     nominal_voltage 220.000;
+}
+
+object load {  
+     name carga_45;
+     phases "ABC";
+     voltage_A  127+0d; 
+     voltage_B 127-120d;
+     voltage_C 127+120d;
+     object player {                   
+		file Carga_45.txt;
+		property constant_power_A, constant_power_B, constant_power_C;	
+	};
+     nominal_voltage 220.000;
+}
+
+object load {  
+     name carga_46;
+     phases "ABC";
+     voltage_A  127+0d; 
+     voltage_B 127-120d;
+     voltage_C 127+120d;
+     object player {                   
+		file Carga_46.txt;
+		property constant_power_A, constant_power_B, constant_power_C;	
+	};
+     nominal_voltage 220.000;
+}
+
+object load {  
+     name carga_47;
+     phases "ABC";
+     voltage_A  127+0d; 
+     voltage_B 127-120d;
+     voltage_C 127+120d;
+     object player {                   
+		file Carga_47.txt;
+		property constant_power_A, constant_power_B, constant_power_C;	
+	};
+     nominal_voltage 220.000;
+}
+
+object load {  
+     name carga_48;
+     phases "ABC";
+     voltage_A  127+0d; 
+     voltage_B 127-120d;
+     voltage_C 127+120d;
+     object player {                   
+		file Carga_48.txt;
+		property constant_power_A, constant_power_B, constant_power_C;	
+	};
+     nominal_voltage 220.000;
+}
+
+object load {  
+     name carga_49;
+     phases "ACN";
+     voltage_A  127+0d; 
+     voltage_C 127+120d;
+     object player {                   
+		file Carga_49.txt;
+		property constant_power_A, constant_power_C;	
+	};
+     nominal_voltage 220.000;
+}
+
+object load {  
+     name carga_50;
+     phases "AC";
+     voltage_A  127+0d; 
+     voltage_C 127+120d;
+     object player {                   
+		file Carga_50.txt;
+		property constant_power_A, constant_power_C;	
+	};
+     nominal_voltage 220.000;
+}
+
+object load {  
+     name carga_51;
+     phases "AC";
+     voltage_A  127+0d; 
+     voltage_C 127+120d;
+     object player {                   
+		file Carga_51.txt;
+		property constant_power_A, constant_power_C;	
+	};
+     nominal_voltage 220.000;
+}
+
+object load {  
+     name carga_52;
+     phases "AC";
+     voltage_A  127+0d; 
+     voltage_C 127+120d;
+     object player {                   
+		file Carga_52.txt;
+		property constant_power_A, constant_power_C;	
+	};
+     nominal_voltage 220.000;
+}
+
+object load {  
+     name carga_53;
+     phases "AC";
+     voltage_A  127+0d; 
+     voltage_C 127+120d;
+     object player {                   
+		file Carga_53.txt;
+		property constant_power_A, constant_power_C;	
+	};
+     nominal_voltage 220.000;
+}
+
+object load {  
+     name carga_54;
+     phases "AC";
+     voltage_A  127+0d; 
+     voltage_C 127+120d;
+     object player {                   
+		file Carga_54.txt;
+		property constant_power_A, constant_power_C;	
+	};
+     nominal_voltage 220.000;
+}
+
+object load {  
+     name carga_55;
+     phases "AC";
+     voltage_A  127+0d; 
+     voltage_C 127+120d;
+     object player {                   
+		file Carga_55.txt;
+		property constant_power_A, constant_power_C;	
+	};
+     nominal_voltage 220.000;
+}
+
+object load {  
+     name carga_56;
+     phases "AC";
+     voltage_A  127+0d; 
+     voltage_C 127+120d;
+     object player {                   
+		file Carga_56.txt;
+		property constant_power_A, constant_power_C;	
+	};
+     nominal_voltage 220.000;
+}
+
+object load {  
+     name carga_57;
+     phases "AC";
+     voltage_A  127+0d; 
+     voltage_C 127+120d;
+     object player {                   
+		file Carga_57.txt;
+		property constant_power_A, constant_power_C;	
+	};
+     nominal_voltage 220.000;
+}
+
+object load {  
+     name carga_58;
+     phases "AC";
+     voltage_A  127+0d; 
+     voltage_C 127+120d;
+     object player {                   
+		file Carga_58.txt;
+		property constant_power_A, constant_power_C;	
+	};
+     nominal_voltage 220.000;
+}
+
+object load {  
+     name carga_59;
+     phases "AC";
+     voltage_A  127+0d; 
+     voltage_C 127+120d;
+     object player {                   
+		file Carga_59.txt;
+		property constant_power_A, constant_power_C;	
+	};
+     nominal_voltage 220.000;
+}
+
+object load {  
+     name carga_60;
+     phases "AC";
+     voltage_A  127+0d; 
+     voltage_C 127+120d;
+     object player {                   
+		file Carga_60.txt;
+		property constant_power_A, constant_power_C;	
+	};
+     nominal_voltage 220.000;
+}
+
+object load {  
+     name carga_61;
+     phases "AC";
+     voltage_A  127+0d; 
+     voltage_C 127+120d;
+     object player {                   
+		file Carga_61.txt;
+		property constant_power_A, constant_power_C;	
+	};
+     nominal_voltage 220.000;
+}
+
+object load {  
+     name carga_62;
+     phases "AC";
+     voltage_A  127+0d; 
+     voltage_C 127+120d;
+     object player {                   
+		file Carga_62.txt;
+		property constant_power_A, constant_power_C;	
+	};
+     nominal_voltage 220.000;
+}
+
+object load {  
+     name carga_63;
+     phases "AC";
+     voltage_A  127+0d; 
+     voltage_C 127+120d;
+     object player {                   
+		file Carga_63.txt;
+		property constant_power_A, constant_power_C;	
+	};
+     nominal_voltage 220.000;
+}
+
+object load {  
+     name carga_64;
+     phases "AC";
+     voltage_A  127+0d; 
+     voltage_C 127+120d;
+     object player {                   
+		file Carga_64.txt;
+		property constant_power_A, constant_power_C;	
+	};
+     nominal_voltage 220.000;
+}
+
+object load {  
+     name carga_65;
+     phases "AC";
+     voltage_A  127+0d; 
+     voltage_C 127+120d;
+     object player {                   
+		file Carga_65.txt;
+		property constant_power_A, constant_power_C;	
+	};
+     nominal_voltage 220.000;
+}
+
+object load {  
+     name carga_66;
+     phases "AC";
+     voltage_A  127+0d; 
+     voltage_C 127+120d;
+     object player {                   
+		file Carga_66.txt;
+		property constant_power_A, constant_power_C;	
+	};
+     nominal_voltage 220.000;
+}
+
+object load {  
+     name carga_67;
+     phases "AC";
+     voltage_A  127+0d; 
+     voltage_C 127+120d;
+     object player {                   
+		file Carga_67.txt;
+		property constant_power_A, constant_power_C;	
+	};
+     nominal_voltage 220.000;
+}
+
+object load {  
+     name carga_68;
+     phases "AC";
+     voltage_A  127+0d; 
+     voltage_C 127+120d;
+     object player {                   
+		file Carga_68.txt;
+		property constant_power_A, constant_power_C;	
+	};
+     nominal_voltage 220.000;
+}
+
+object load {  
+     name carga_69;
+     phases "AC";
+     voltage_A  127+0d; 
+     voltage_C 127+120d;
+     object player {                   
+		file Carga_69.txt;
+		property constant_power_A, constant_power_C;	
+	};
+     nominal_voltage 220.000;
+}
+
+object load {  
+     name carga_70;
+     phases "AC";
+     voltage_A  127+0d; 
+     voltage_C 127+120d;
+     object player {                   
+		file Carga_70.txt;
+		property constant_power_A, constant_power_C;	
+	};
+     nominal_voltage 220.000;
+}
+
+object load {  
+     name carga_71;
+     phases "AC";
+     voltage_A  127+0d; 
+     voltage_C 127+120d;
+     object player {                   
+		file Carga_71.txt;
+		property constant_power_A, constant_power_C;	
+	};
+     nominal_voltage 220.000;
+}
+
+object load {  
+     name carga_72;
+     phases "AC";
+     voltage_A  127+0d; 
+     voltage_C 127+120d;
+     object player {                   
+		file Carga_72.txt;
+		property constant_power_A, constant_power_C;	
+	};
+     nominal_voltage 220.000;
+}
+
+object load {  
+     name carga_73;
+     phases "AC";
+     voltage_A  127+0d; 
+     voltage_C 127+120d;
+     object player {                   
+		file Carga_73.txt;
+		property constant_power_A, constant_power_C;	
+	};
+     nominal_voltage 220.000;
+}
+
+object load {  
+     name carga_74;
+     phases "AC";
+     voltage_A  127+0d; 
+     voltage_C 127+120d;
+     object player {                   
+		file Carga_74.txt;
+		property constant_power_A, constant_power_C;	
+	};
+     nominal_voltage 220.000;
+}
+
+object load {  
+     name carga_75;
+     phases "AC";
+     voltage_A  127+0d; 
+     voltage_C 127+120d;
+     object player {                   
+		file Carga_75.txt;
+		property constant_power_A, constant_power_C;	
+	};
+     nominal_voltage 220.000;
+}
+
+object load {  
+     name carga_76;
+     phases "AC";
+     voltage_A  127+0d; 
+     voltage_C 127+120d;
+     object player {                   
+		file Carga_76.txt;
+		property constant_power_A, constant_power_C;	
+	};
+     nominal_voltage 220.000;
+}
+
+object load {  
+     name carga_77;
+     phases "AC";
+     voltage_A  127+0d; 
+     voltage_C 127+120d;
+     object player {                   
+		file Carga_77.txt;
+		property constant_power_A, constant_power_C;	
+	};
+     nominal_voltage 220.000;
+}
+
+object load {  
+     name carga_78;
+     phases "AC";
+     voltage_A  127+0d; 
+     voltage_C 127+120d;
+     object player {                   
+		file Carga_78.txt;
+		property constant_power_A, constant_power_C;	
+	};
+     nominal_voltage 220.000;
+}
+
+object load {  
+     name carga_79;
+     phases "AC";
+     voltage_A  127+0d; 
+     voltage_C 127+120d;
+     object player {                   
+		file Carga_79.txt;
+		property constant_power_A, constant_power_C;	
+	};
+     nominal_voltage 220.000;
+}
+
+object load {  
+     name carga_80;
+     phases "AC";
+     voltage_A  127+0d; 
+     voltage_C 127+120d;
+     object player {                   
+		file Carga_80.txt;
+		property constant_power_A, constant_power_C;	
+	};
+     nominal_voltage 220.000;
+}
+
+object load {  
+     name carga_81;
+     phases "AC";
+     voltage_A  127+0d; 
+     voltage_C 127+120d;
+     object player {                   
+		file Carga_81.txt;
+		property constant_power_A, constant_power_C;	
+	};
+     nominal_voltage 220.000;
+}
+
+object load {  
+     name carga_82;
+     phases "AC";
+     voltage_A  127+0d; 
+     voltage_C 127+120d;
+     object player {                   
+		file Carga_82.txt;
+		property constant_power_A, constant_power_C;	
+	};
+     nominal_voltage 220.000;
+}
+
+object load {  
+     name carga_83;
+     phases "AC";
+     voltage_A  127+0d; 
+     voltage_C 127+120d;
+     object player {                   
+		file Carga_83.txt;
+		property constant_power_A, constant_power_C;	
+	};
+     nominal_voltage 220.000;
+}
+
+object load {  
+     name carga_84;
+     phases "AC";
+     voltage_A  127+0d; 
+     voltage_C 127+120d;
+     object player {                   
+		file Carga_84.txt;
+		property constant_power_A, constant_power_C;	
+	};
+     nominal_voltage 220.000;
+}
+
+object load {  
+     name carga_85;
+     phases "AC";
+     voltage_A  127+0d; 
+     voltage_C 127+120d;
+     object player {                   
+		file Carga_85.txt;
+		property constant_power_A, constant_power_C;	
+	};
+     nominal_voltage 220.000;
+}
+
+object load {  
+     name carga_86;
+     phases "AC";
+     voltage_A  127+0d; 
+     voltage_C 127+120d;
+     object player {                   
+		file Carga_86.txt;
+		property constant_power_A, constant_power_C;	
+	};
+     nominal_voltage 220.000;
+}
+
+object load {  
+     name carga_89;
+     phases "ABC";
+     voltage_A  127+0d; 
+     voltage_B 127-120d;
+     voltage_C 127+120d;
+     object player {                   
+		file Carga_89.txt;
+		property constant_power_A,constant_power_B, constant_power_C;	
+	};
+     nominal_voltage 220.000;
+}
+
+object switch {
+	name switch1;
+	phases ABC;
+	from barra_trafo_7;
+	to barra_32;
+	status OPEN;
+	}
+
+//object recorder{
+	//name perdas_linha_1;
+	//parent linha_1;
+	//property power_losses.real;
+	//file pedas_linha_1.csv;
+	//interval 600;	
+//}
+
+//object recorder{
+	//name tensao_PCC;
+	//parent medidor_SE;
+	//property measured_voltage_A.real,measured_voltage_A.imag, measured_voltage_B.real, measured_voltage_B.imag, measured_voltage_C.real,measured_voltage_C.imag;
+	//file tensoes_PCC.csv;
+	//interval 600;
+//}
+
+//object recorder{
+	//name potencia_saida_PV_INV;
+	//parent medidor_PV;
+	//property measured_power;
+	//file potencia_saida_INV_PV.csv;
+	//interval 600;
+//}
+
+//object recorder{
+	//name potencia_SE;
+	//parent medidor_SE;
+	//property measured_power.real;
+	//file potencia_SE.csv;
+	//interval 600;
+//}
+
+//object recorder{
+	//name potencia_inv_bat;
+	//parent medidor_BAT;
+	//property measured_power;
+	//file potencia_Inv_bat.csv;
+	//interval 600;
+//}
+
+object recorder{
+	name Tensao_PCC;
+	parent barra_2;
+	property voltage_A.real, voltage_A.imag, voltage_B.real, voltage_B.imag, voltage_C.real, voltage_C.imag;
+	file tensao_PCC.csv;
+	interval 600;
+}
+	
+object voltdump{
+		filename perfil_de_tensao_FDC.csv;
+		mode POLAR;
+		runtime '2017-09-02 20:00:00';
+}
+
+object multi_recorder{
+	name medicao_inversor_bat;
+	file estado_de_carga_SAE.txt;
+	interval 600;
+	property bateria:state_of_charge, bateria:battery_load, bateria:Energy;
+}	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
