@@ -62,8 +62,8 @@ q_max_inv_ac = 20 # (kvar)
 
 # PENALIDADES
 peso_soc_bike = 0.5
-peso_soc_es = 0.1
-peso_p_rede = 1 - peso_soc_bike - peso_soc_es
+peso_soc_est = 0.1
+peso_p_rede = 1 - peso_soc_bike - peso_soc_est
 
 
 # soc_bike = [num_bikes][num_amostras]
@@ -164,7 +164,7 @@ soc_est = pl.LpVariable.dicts('soc_est',
 # Somatório das 24 horas da potência*tempo*custo_energia
 prob += pl.lpSum([((p_rede[k]*ts*dados_entrada.loc[k,'custo_energia'])/
                   (p_max_rede*ts*custo_max_energia)*peso_p_rede +
-                  mod_dif_soc_ref_est[k]*peso_soc_es -
+                  mod_dif_soc_ref_est[k]*peso_soc_est -
                   ( pl.lpSum([soc_bike[bike][k]] for bike in range(0,num_bikes)) )/
                   ( pl.lpSum([dados_entrada.loc[k,'cx_bike_{}'.format(b)]] for b in range(0,num_bikes)) )*
                   peso_soc_bike)
