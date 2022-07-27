@@ -3,6 +3,6 @@
     "port": "502",
     "client_id": "1",
 	"init_reg_read": "0",
-	"qtt_reg_read": "6",
-	"init_reg_write": "0"
+	"qtt_reg_read": "24",
+	"init_reg_write": "24"
 }
