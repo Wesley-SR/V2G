@@ -7,7 +7,7 @@ import pulp as pl
 import numpy as np
 from sklearn.preprocessing import MinMaxScaler
 from keras.models import model_from_json
-# import matplotlib.pyplot as plt
+import matplotlib.pyplot as plt
 
 
 
@@ -340,7 +340,6 @@ class ModelPredictiveControl:
 
 
     def get_control_results(self):
-        
         control_signals = self.control_signals[:1]
         control_signals = self.control_signals.iloc[1].values # [] Check with float number, because modbus is only int
         return control_signals
@@ -355,6 +354,99 @@ class ModelPredictiveControl:
         self.define_objective_funcion()
         self.prob.solve(self.solver)
 
+
+
+
+    def plot_results(self):
+        time_array = self.dados_entrada.index
+        
+        p_rede_res = [0.0] * self.number_of_samples
+        somatorio_p_rede = [0.0] * self.number_of_samples
+        p_ch_bat_est_res = [0.0] * self.number_of_samples
+        p_dc_bat_est_res = [0.0] * self.number_of_samples
+        p_pv_res = [0.0] * self.number_of_samples
+        soc_est_res = [0.0] * self.number_of_samples
+        custo_energia = [0.0] * self.number_of_samples
+        mod_est = [0.0] * self.number_of_samples
+
+        ch_dc_bike_res = np.zeros((self.num_bikes, self.number_of_samples))
+        soc_bike_res = np.zeros((self.num_bikes, self.number_of_samples))
+        
+        plt.figure()
+        fig1,axs1 = plt.subplots(3)
+        
+        ''' p_rede e p_pv '''
+        num_graf = 0
+        # fig.suptitle('Penalidades: Bike {peso_soc_bike}, Est.: {peso_soc_est}, p_rede = {peso_p_rede} \n Efic. conv. wireless = {ef}'.
+        #              format(peso_soc_bike=peso_soc_bike,peso_soc_est=peso_soc_est,peso_p_rede=peso_p_rede,ef=eff_conv_w),fontsize=10)
+        axs1[num_graf].step(time_array/6, p_rede_res,c='#d62728',label='p_rede [kW] inversa')
+        axs1[num_graf].step(time_array/6, p_pv_res,c='c',label='p_pv [kW]')
+        axs1[num_graf].legend(loc='upper right',prop={'size': 7})
+        axs1[num_graf].grid()
+        axs1[num_graf].tick_params(axis='x', which='major', labelsize=5)
+        axs1[num_graf].tick_params(axis='y', which='major', labelsize=10)
+        axs1[num_graf].set_yticks([-10,-10,0,10,15])
+        axs1[num_graf].set_xticks([0,5,6,8,10,12,16,17,18,20,21,22,25])
+        
+        ''' soc bikes '''
+        num_graf +=1
+        axs1[num_graf].step(time_array/6, soc_est_res,c='r',label='soc_est',linestyle = '--')
+        for bike in range(0,self.num_bikes):
+            axs1[num_graf].step(time_array/6, soc_bike_res[bike])#,label=('soc_bike_{bike}'.format(bike=bike)))
+            # axs1[num_graf].legend(loc='lower right',prop={'size': 7})
+        
+        axs1[num_graf].legend(loc='lower right',prop={'size': 7})
+        axs1[num_graf].grid()
+        axs1[num_graf].tick_params(axis='x', which='major', labelsize=5)
+        axs1[num_graf].tick_params(axis='y', which='major', labelsize=10)
+        axs1[num_graf].set_xticks([0,5,6,8,10,12,16,17,18,20,21,22,25])
+        
+        ''' Soc da bateria estacionária '''
+        num_graf +=1
+        # axs1[num_graf].step(time_array/6, ch_dc_bike,c='#1f77b4',label='ch_dc_bike')
+        # axs1[num_graf].step(time_array/6, soc_est_res,c='#1f77b4',label='soc_est')
+        axs1[num_graf].step(time_array/6, custo_energia,c='C1',label='custo_energia [R$/(kWh)]')
+        axs1[num_graf].legend(loc='lower center',prop={'size': 7})
+        axs1[num_graf].set_ylabel('Amplitude')
+        # axs1[1].set_xticks(time_array)
+        axs1[num_graf].grid()
+        axs1[num_graf].tick_params(axis='x', which='major', labelsize=7)
+        axs1[num_graf].tick_params(axis='y', which='major', labelsize=10)
+        axs1[num_graf].set_yticks([0,0.2,0.5,1])
+        axs1[num_graf].set_xticks([0,5,6,8,10,12,16,17,18,20,21,22,25])
+        
+        ''' Somatório do P_rede '''
+        # num_graf +=1
+        # axs1[num_graf].step(time_array/6, somatorio_p_rede,c='#d62728',label='somatorio_p_rede [kW]')
+        # axs1[num_graf].legend(loc='lower right',prop={'size': 7})
+        # axs1[num_graf].tick_params(axis='y', which='major', labelsize=10)
+        # axs1[num_graf].grid()
+        # axs1[num_graf].set_xlabel('Tempo (horas)')
+        # axs1[num_graf].set_yticks([-100,0,200,400,500])
+        # axs1[num_graf].set_xticks([0,5,6,8,10,12,16,17,18,20,21,22,25])
+        
+        # name_figure = "imagens_testes/220419_penalidade_soc_{}.png".format(peso_soc_bike)
+        # plt.savefig(name_figure, format="png", dpi=400)
+        
+        ''' Só as bikes '''
+        # plot2 = plt.figure(2)
+        # fig2,axs2 = plt.subplots(1)
+        # num_graf = 0
+        # for bike in range(0,num_bikes):
+        #     plt.step(time_array/6, soc_bike_res[bike],label=('soc_bike_{bike}'.format(bike=bike)))
+        #     plt.legend(loc='lower right',prop={'size': 7})
+        # plt.grid()
+        # plt.yticks([0,0.1,0.5,1])
+        
+        ''' Somatório do p_rede [kWh] '''
+        plot2 = plt.figure(2)
+        fig2,axs2 = plt.subplots(1)
+        plt.step(time_array/6, somatorio_p_rede,c='#d62728',label='somatorio_p_rede [kWh]')
+        plt.legend(loc='lower right',prop={'size': 10})
+        plt.grid()
+        
+        ''' PLOTAR '''
+        plt.show()
 
 
 

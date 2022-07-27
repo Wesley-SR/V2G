@@ -21,12 +21,29 @@ class ModbusCommunication:
         try:
             self._modbus_client = ModbusClient(host = self._host, port= self._port,
                             unit_id = self._client_id, debug=False, auto_open=True)
+            
+            if self._modbus_client.read_holding_registers(0,1):
+                print("\nModbus Client stated successfull\n")
+            else:
+                raise Exception("No found server")
+            
         except Exception as error:
-            print("Error creating Modbus client \n Error: {}".format(error))
+            print("\nError creating Modbus client: {}\n".format(error))
+            raise
     
     def read_modbus_data(self):
         return self._modbus_client.read_holding_registers(self._init_reg_read, self._qtt_reg_read)
     
     def write_modbus_data(self, data):
         self._modbus_client.write_multiple_registers(self._init_reg_write, data)
-        
+
+
+if __name__ == '__main__':
+
+    try:
+        # Crete Modbus Communication
+        modbus = ModbusCommunication('configs_modbus.json')
+    
+    except ValueError:
+        print("Error: {}".format(ValueError))
+    
