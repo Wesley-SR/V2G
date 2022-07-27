@@ -166,7 +166,7 @@ prob += pl.lpSum([((p_rede[k]*ts*dados_entrada.loc[k,'custo_energia'])/
                   (p_max_rede*ts*custo_max_energia)*peso_p_rede +
                   mod_dif_soc_ref_est[k]*peso_soc_est -
                   ( pl.lpSum([soc_bike[bike][k]] for bike in range(0,num_bikes)) )/
-                  ( pl.lpSum([dados_entrada.loc[k,'cx_bike_{}'.format(b)]] for b in range(0,num_bikes)) )*
+                  ( pl.lpSum([dados_entrada.loc[k,'cx_bike_{index}'.format(index = b)]] for b in range(0,num_bikes)) )*
                   peso_soc_bike)
                   for k in dados_entrada.index])
 
