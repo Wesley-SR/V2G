@@ -25,8 +25,7 @@ class ModbusCommunication:
             print("Error creating Modbus client \n Error: {}".format(error))
     
     def read_modbus_data(self):
-        return self._modbus_client.read_holding_registers(self._init_reg_read, 
-                                                          self._qtt_reg_read)
+        return self._modbus_client.read_holding_registers(self._init_reg_read, self._qtt_reg_read)
     
     def write_modbus_data(self, data):
         self._modbus_client.write_multiple_registers(self._init_reg_write, data)

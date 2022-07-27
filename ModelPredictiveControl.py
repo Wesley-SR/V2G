@@ -3,11 +3,11 @@
 import json
 import pandas as pd
 import pulp as pl
-import csv
+# import csv
 import numpy as np
 from sklearn.preprocessing import MinMaxScaler
 from keras.models import model_from_json
-import matplotlib.pyplot as plt
+# import matplotlib.pyplot as plt
 
 
 
@@ -257,7 +257,7 @@ class ModelPredictiveControl:
                 self.prob += self.soc_est[k] == self.soc_ini_est
             else:
                 self.prob += self.soc_est[k] ==  self.soc_est[k-1] + (self.p_ch_bat_est[k-1] 
-                                                        - self.p_dc_bat_est[k-1])*self.ts/self.e_total_bat_est
+                                                        - self.p_dc_bat_est[k-1])*self.sample_time/self.e_total_bat_est
             
             # REDE
             self.prob += self.p_rede[k] == (self.p_rede_imp_ac[k] - self.p_rede_exp_ac[k])
@@ -331,8 +331,7 @@ class ModelPredictiveControl:
 
     def set_new_data(self, measurement):
         # DISCARD THE FIRST AND DUPLICATE THE LAST SAMPLE
-        self.previous_data[0:self.number_of_samples-2] = self.previous_data[
-            0+1:,self.number_of_samples-1] # [ ] Check later
+        self.previous_data[0:self.number_of_samples-2] = self.previous_data[0+1:self.number_of_samples-1] # [ ] Check later
         
         # UPDATE THE LAST SAMPLE
         self.previous_data[self.number_of_samples] = measurement[1]
@@ -341,12 +340,13 @@ class ModelPredictiveControl:
 
 
     def get_control_results(self):
-        # result = range(0, 10) # Colocar todos os dados de controle
-        # return control signals
-        pass
+        
+        control_signals = self.control_signals[:1]
+        control_signals = self.control_signals.iloc[1].values # [] Check with float number, because modbus is only int
+        return control_signals
 
 
- 
+
 
     def run_mpc(self):
         self.run_forecast_bike_behavior()
