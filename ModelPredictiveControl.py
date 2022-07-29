@@ -3,11 +3,9 @@
 import json
 import pandas as pd
 import pulp as pl
-# import csv
 import numpy as np
 from sklearn.preprocessing import MinMaxScaler
 from keras.models import model_from_json
-import matplotlib.pyplot as plt
 
 
 
@@ -358,7 +356,7 @@ class ModelPredictiveControl:
 
 
     def plot_results(self):
-        time_array = self.dados_entrada.index
+        time_array = self.previous_data.index
         
         p_rede_res = [0.0] * self.number_of_samples
         somatorio_p_rede = [0.0] * self.number_of_samples
@@ -368,10 +366,22 @@ class ModelPredictiveControl:
         soc_est_res = [0.0] * self.number_of_samples
         custo_energia = [0.0] * self.number_of_samples
         mod_est = [0.0] * self.number_of_samples
-
         ch_dc_bike_res = np.zeros((self.num_bikes, self.number_of_samples))
         soc_bike_res = np.zeros((self.num_bikes, self.number_of_samples))
         
+        for k in time_array:
+            p_rede_res[k] = - self.p_rede[k].varValue
+            p_pv_res[k] = self.previous_data.loc[k,'potencia_PV']
+            custo_energia[k] = self.previous_data.loc[k,'custo_energia']
+            soc_est_res[k] = self.soc_est[k].varValue
+            mod_est[k] = self.mod_dif_soc_ref_est[k].varValue 
+            
+            for bike in range(0,self.num_bikes):
+                ch_dc_bike_res[bike][k] = self.p_ch_bike1[bike][k].varValue - self.p_dc_bike1[bike][k].varValue
+                soc_bike_res[bike][k] = self.soc_bike[bike][k].varValue
+            if k >= 1:
+                somatorio_p_rede[k] = (somatorio_p_rede[k-1] + p_rede_res[k])
+
         plt.figure()
         fig1,axs1 = plt.subplots(3)
         
@@ -415,29 +425,6 @@ class ModelPredictiveControl:
         axs1[num_graf].set_yticks([0,0.2,0.5,1])
         axs1[num_graf].set_xticks([0,5,6,8,10,12,16,17,18,20,21,22,25])
         
-        ''' Somatório do P_rede '''
-        # num_graf +=1
-        # axs1[num_graf].step(time_array/6, somatorio_p_rede,c='#d62728',label='somatorio_p_rede [kW]')
-        # axs1[num_graf].legend(loc='lower right',prop={'size': 7})
-        # axs1[num_graf].tick_params(axis='y', which='major', labelsize=10)
-        # axs1[num_graf].grid()
-        # axs1[num_graf].set_xlabel('Tempo (horas)')
-        # axs1[num_graf].set_yticks([-100,0,200,400,500])
-        # axs1[num_graf].set_xticks([0,5,6,8,10,12,16,17,18,20,21,22,25])
-        
-        # name_figure = "imagens_testes/220419_penalidade_soc_{}.png".format(peso_soc_bike)
-        # plt.savefig(name_figure, format="png", dpi=400)
-        
-        ''' Só as bikes '''
-        # plot2 = plt.figure(2)
-        # fig2,axs2 = plt.subplots(1)
-        # num_graf = 0
-        # for bike in range(0,num_bikes):
-        #     plt.step(time_array/6, soc_bike_res[bike],label=('soc_bike_{bike}'.format(bike=bike)))
-        #     plt.legend(loc='lower right',prop={'size': 7})
-        # plt.grid()
-        # plt.yticks([0,0.1,0.5,1])
-        
         ''' Somatório do p_rede [kWh] '''
         plot2 = plt.figure(2)
         fig2,axs2 = plt.subplots(1)
@@ -445,7 +432,6 @@ class ModelPredictiveControl:
         plt.legend(loc='lower right',prop={'size': 10})
         plt.grid()
         
-        ''' PLOTAR '''
         plt.show()
 
 
