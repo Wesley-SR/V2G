@@ -3,6 +3,7 @@
 # import ModbusCommunication
 from ModbusCommunication import ModbusCommunication
 from ModelPredictiveControl import ModelPredictiveControl
+import matplotlib.pyplot as plt
 # from time import sleep
 
 if __name__ == '__main__':
@@ -19,12 +20,12 @@ if __name__ == '__main__':
         mpc = ModelPredictiveControl("configs_mpc.json",
                                      "dados_entrada_retirando_bikes.csv",
                                      "control_signals.csv")
-    
+        
         while(continue_mpc):
             
             # READ MEASUREMENT DATAS
             modbus_measurement = modbus.read_modbus_data()
-    
+            
             # RUN THE FORECAST ALGORITHMS
             mpc.set_new_data(modbus_measurement)
             
@@ -39,6 +40,7 @@ if __name__ == '__main__':
             
             #PLOT RESULTS
             mpc.plot_results()
+            # plt.show()
             
             counter += 1
             if counter == num_iterations:
