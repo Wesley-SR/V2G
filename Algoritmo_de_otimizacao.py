@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 ''' ------- DEFINIÇÃO DO PROBLEMA ------- '''
-dados_entrada = pd.read_csv('dados_entrada_retirando_bikes.csv', index_col=['tempo'])
+dados_entrada = pd.read_csv('dados_entrada_retirando_bikes.csv', sep = ";", index_col=['tempo'])
 prob = pl.LpProblem("otimizacao_V2G", pl.LpMinimize)
 
 solver = pl.PULP_CBC_CMD() # pl.SCIP_CMD()
