@@ -6,6 +6,7 @@ import pulp as pl
 import numpy as np
 from sklearn.preprocessing import MinMaxScaler
 from keras.models import model_from_json
+import matplotlib.pyplot as plt
 
 
 
@@ -17,11 +18,12 @@ class ModelPredictiveControl:
         # LOAD CONFIGS
         with open(path_to_config_file, 'r') as json_file:
             self.config_data = json.load(json_file)
+        print("1 - Read config files")
 
         # CREATE MATRIX TO STORE DATAS
-        self.previous_data = pd.read_csv(path_to_inicial_data, sep = ";", index_col=['tempo'])
+        self.previous_data = pd.read_csv(path_to_inicial_data, sep = ";", index_col=['time'])
         self.forecast_data = self.previous_data
-        self.control_signals = pd.read_csv(path_to_control_signals, sep = ";", index_col=['tempo'])
+        self.control_signals = pd.read_csv(path_to_control_signals, sep = ";", index_col=['time'])
 
         # CREATE AN OBJECT TO THE OPTMIZATIOM PROBLEM
         self.prob = pl.LpProblem(self.config_data["optimization_name"], 
@@ -33,6 +35,7 @@ class ModelPredictiveControl:
         # CALL FUNCTIONS
         self.define_problem_parameters()
         self.define_problem_variables()
+        print("2 - Define problem parameters and variables")
 
 
 
@@ -46,95 +49,94 @@ class ModelPredictiveControl:
         self.bikes = range(0, self.num_bikes)
         self.time = range(0, self.number_of_samples+1)
         # EXTERNAL NETWORK
-        self.p_max_rede = float(self.config_data["p_max_rede"])
-        self.max_energy_cost = float(self.config_data["max_energy_cost"])
+        self.net_pow_imp_max = float(self.config_data["net_pow_imp_max"])
+        self.net_pow_exp_max = float(self.config_data["net_pow_exp_max"])
+        self.energy_cost_imp_max = float(self.config_data["energy_cost_imp_max"])
+        self.energy_cost_exp_max = float(self.config_data["energy_cost_exp_max"])
         # BIKE BATTERY
-        self.soc_max_bike = float(self.config_data["soc_max_bike"]) # Maximum battery soc
-        self.soc_min_bike = float(self.config_data["soc_min_bike"]) # Minimum battery soc
-        self.soc_ini_bike = float(self.config_data["soc_ini_bike"])
-        self.p_max_bat_bike = float(self.config_data["p_max_bat_bike"]) # (kW) -> ch/dc a 250 W
-        self.e_total_bat_bike = float(self.config_data["e_total_bat_bike"]) # 6.3 # The total energy of the bikes battery (kWh)
+        self.bike_soc_max = float(self.config_data["bike_soc_max"]) # Maximum battery soc
+        self.bike_soc_min = float(self.config_data["bike_soc_min"]) # Minimum battery soc
+        self.bike_soc_ini = float(self.config_data["bike_soc_ini"])
+        self.bike_pow_max = float(self.config_data["bike_pow_max"]) # (kW) -> ch/dc a 250 W
+        self.bike_energy_max = float(self.config_data["bike_energy_max"]) # 6.3 # The total energy of the bikes battery (kWh)
         # OBS. 0.63 kWh per battery, being 12 V, são 52.5 Ah por bateria
         # STATIONARY BATTERY
-        self.soc_max_est = float(self.config_data["soc_max_est"]) # soc Maximo da bateria
-        self.soc_min_est = float(self.config_data["soc_min_est"]) # soc minimo da bateria
-        self.soc_ini_est = float(self.config_data["soc_ini_est"])
-        self.p_max_bat_est = float(self.config_data["p_max_bat_est"]) # Deve ser o ch e dc constante (kW)
-        self.e_total_bat_est = float(self.config_data["e_total_bat_est"]) # Energia total da bateria estacionária (kWh)
-        self.soc_ref_est = float(self.config_data["soc_ref_est"])
+        self.est_soc_max = float(self.config_data["est_soc_max"]) # soc Maximo da bateria
+        self.est_soc_min = float(self.config_data["est_soc_min"]) # soc minimo da bateria
+        self.est_soc_ini = float(self.config_data["est_soc_ini"])
+        self.est_soc_ref = float(self.config_data["est_soc_ref"])
+        self.est_pow_max = float(self.config_data["est_pow_max"]) # Deve ser o ch e dc constante (kW)
+        self.est_energy_max = float(self.config_data["est_energy_max"]) # Energia total da bateria estacionária (kWh)
+
         # INVERTERS
-        self.eff_conv_w = float(self.config_data["eff_conv_w"]) # 0.96 Eficiência conversor wireless
-        self.eff_conv_ac =  float(self.config_data["eff_conv_ac"]) # 0.96
-        self.p_max_inv_ac = float(self.config_data["p_max_inv_ac"]) # (kW)
-        self.q_max_inv_ac = float(self.config_data["q_max_inv_ac"]) # (kvar)
+        self.conv_w_eff = float(self.config_data["conv_w_eff"]) # 0.96 Eficiência conversor wireless
+        self.conv_ac_eff =  float(self.config_data["conv_ac_eff"]) # 0.96
+        self.inv_ac_pow_max = float(self.config_data["inv_ac_pow_max"]) # (kW)
+
         # WEIGHTS
-        self.peso_soc_bike = float(self.config_data["peso_soc_bike"])
-        self.peso_soc_est = float(self.config_data["peso_soc_est"])
-        self.peso_p_rede = 1 - self.peso_soc_bike - self.peso_soc_est
+        self.weight_soc_bike = float(self.config_data["weight_soc_bike"])
+        self.weight_soc_est = float(self.config_data["weight_soc_est"])
+        self.weight_pow_net = 1 - self.weight_soc_bike - self.weight_soc_est
 
 
 
 
     def define_problem_variables(self):
 
-        self.p_rede_exp_ac = pl.LpVariable.dicts('p_rede_exp_ac', 
-                                                 range(0, self.number_of_samples),
-                                                 lowBound=0,
-                                                 upBound= float(self.p_max_rede),
-                                                 cat='Continuous')
         
-        self.p_rede_imp_ac = pl.LpVariable.dicts('p_rede_imp_ac', 
+        self.net_pow_ac_imp = pl.LpVariable.dicts('net_pow_ac_imp', 
                                                  range(0, self.number_of_samples),
                                                  lowBound=0, 
-                                                 upBound= float(self.p_max_rede),
+                                                 upBound= float(self.net_pow_imp_max),
+                                                 cat='Continuous')
+        
+        self.net_pow_ac_exp = pl.LpVariable.dicts('net_pow_ac_exp', 
+                                                 range(0, self.number_of_samples),
+                                                 lowBound=0,
+                                                 upBound= float(self.net_pow_imp_max),
                                                  cat='Continuous')
         
         self.p_rede = pl.LpVariable.dicts('p_rede', range(0, self.number_of_samples),
-                                     lowBound= - float(self.p_max_rede),
-                                     upBound= float(self.p_max_rede),
+                                     lowBound= - float(self.net_pow_imp_max),
+                                     upBound= float(self.net_pow_imp_max),
                                      cat='Continuous')
         
-        # q_rede_exp_ac = pl.LpVariable.dicts('q_rede_exp_ac', range(0,self.number_of_samples),
-        #                                     lowBound=0, upBound=p_max_rede,
-        #                                     cat='Continuous')
-        # q_rede_imp_ac = pl.LpVariable.dicts('q_rede_imp_ac', range(0,self.number_of_samples),
-        #                                     lowBound=0, upBound=p_max_rede,
-        #                                     cat='Continuous')
-
         # Parte DC da rede
-        self.p_rede_exp_dc = pl.LpVariable.dicts('p_rede_exp_dc', range(0, int(self.number_of_samples)),
-                                            lowBound = 0, upBound = float(self.p_max_rede),
+        self.net_pow_dc_imp = pl.LpVariable.dicts('net_pow_dc_imp', range(0, int(self.number_of_samples)),
+                                            lowBound = 0, upBound = float(self.net_pow_imp_max),
                                             cat='Continuous')
-        self.p_rede_imp_dc = pl.LpVariable.dicts('p_rede_imp_dc', range(0, int(self.number_of_samples)),
-                                            lowBound = 0, upBound = float(self.p_max_rede),
+        
+        self.net_pow_dc_exp = pl.LpVariable.dicts('net_pow_dc_exp', range(0, int(self.number_of_samples)),
+                                            lowBound = 0, upBound = float(self.net_pow_imp_max),
                                             cat='Continuous')
+
         # Flags for network import
-        self.flag_rede_imp_ac = pl.LpVariable.dicts('flag_rede_imp_ac', range(0, int(self.number_of_samples)),
+        self.flag_net_ac_imp = pl.LpVariable.dicts('flag_net_ac_imp', range(0, int(self.number_of_samples)),
                                                cat='Binary')
-        self.flag_rede_imp_dc = pl.LpVariable.dicts('flag_rede_imp_dc', range(0, int(self.number_of_samples)),
+        self.flag_net_dc_imp = pl.LpVariable.dicts('flag_net_dc_imp', range(0, int(self.number_of_samples)),
                                                cat='Binary')
         # Flags for network export
-        self.flag_rede_exp_ac = pl.LpVariable.dicts('flag_rede_exp_ac', range(0, int(self.number_of_samples)),
+        self.flag_net_ac_exp = pl.LpVariable.dicts('flag_net_ac_exp', range(0, int(self.number_of_samples)),
                                                cat='Binary')
-        self.flag_rede_exp_dc = pl.LpVariable.dicts('flag_rede_exp_dc', range(0, int(self.number_of_samples)),
+        self.flag_net_dc_exp = pl.LpVariable.dicts('flag_net_dc_exp', range(0, int(self.number_of_samples)),
                                                cat='Binary')
 
         # BIKE BATTERY:
         # Observation: (self.bikes, self.time) creates a variable with two dimensions 
-        self.p_ch_bike1 = pl.LpVariable.dicts('p_ch_bike1', (self.bikes, self.time),
+        self.bike_pow_ch_1 = pl.LpVariable.dicts('bike_pow_ch_1', (self.bikes, self.time),
                                          lowBound = 0,
-                                         upBound = float(self.p_max_bat_bike),
+                                         upBound = float(self.bike_pow_max),
                                          cat='Continuous')
         self.p_ch_bike2 = pl.LpVariable.dicts('p_ch_bike2', (self.bikes, self.time),
                                          lowBound = 0, upBound = (
-                                             float(self.p_max_bat_bike)/
-                                             float(self.eff_conv_w)),
+                                             float(self.bike_pow_max)/
+                                             float(self.conv_w_eff)),
                                          cat='Continuous')
         self.p_dc_bike1 = pl.LpVariable.dicts('p_dc_bike1', (self.bikes, self.time),
-                                         lowBound = 0, upBound = float(self.p_max_bat_bike),
+                                         lowBound = 0, upBound = float(self.bike_pow_max),
                                          cat='Continuous')
         self.p_dc_bike2 = pl.LpVariable.dicts('p_dc_bike2', (self.bikes, self.time),
-                                         lowBound = 0, upBound = float(self.p_max_bat_bike),
+                                         lowBound = 0, upBound = float(self.bike_pow_max),
                                          cat='Continuous')
         # Flags for bike battery
         self.flag_ch_bat_bike1 = pl.LpVariable.dicts('flag_ch_bat_bike1', (self.bikes,self.time),
@@ -147,34 +149,34 @@ class ModelPredictiveControl:
                                                 cat='Binary')
         # State Of Charge
         self.soc_bike = pl.LpVariable.dicts('soc_bike', (self.bikes, self.time),
-                                       lowBound= float(self.soc_min_bike),
-                                       upBound= float(self.soc_max_bike),
+                                       lowBound= float(self.bike_soc_min),
+                                       upBound= float(self.bike_soc_max),
                                        cat='Continuous')
-        # soc_min_otm_bike = pl.LpVariable('soc_min_otm_bike', lowBound=soc_min_bike, 
-        #                                  upBound=soc_max_bike,
+        # soc_min_otm_bike = pl.LpVariable('soc_min_otm_bike', lowBound=bike_soc_min, 
+        #                                  upBound=bike_soc_max,
         #                                  cat='Continuous')
 
         # BATERIA ESTACIONÁRIA:
         self.p_ch_bat_est = pl.LpVariable.dicts('p_ch_bat_est', range(0,self.number_of_samples),
-                                           lowBound=0, upBound = float(self.p_max_bat_est),
+                                           lowBound=0, upBound = float(self.est_pow_max),
                                            cat='Continuous')
         self.p_dc_bat_est = pl.LpVariable.dicts('p_dc_bat_est', range(0,self.number_of_samples),
-                                           lowBound=0, upBound = float(self.p_max_bat_est),
+                                           lowBound=0, upBound = float(self.est_pow_max),
                                            cat='Continuous')
         self.flag_ch_bat_est = pl.LpVariable.dicts('flag_ch_bat_est', range(0,self.number_of_samples),
                                               cat='Binary')
         self.flag_dc_bat_est = pl.LpVariable.dicts('flag_dc_bat_est', range(0,self.number_of_samples),
                                               cat='Binary')
-        self.dif_soc_ref_est = pl.LpVariable.dicts('dif_soc_ref_est', range(0,self.number_of_samples),
+        self.dif_est_soc_ref = pl.LpVariable.dicts('dif_est_soc_ref', range(0,self.number_of_samples),
                                               lowBound=-1, upBound=1,
                                               cat='Continuous')
-        self.mod_dif_soc_ref_est = pl.LpVariable.dicts('mod_dif_soc_ref_est', range(0,self.number_of_samples),
+        self.mod_dif_est_soc_ref = pl.LpVariable.dicts('mod_dif_est_soc_ref', range(0,self.number_of_samples),
                                                   lowBound=0, upBound=1,
                                                   cat='Continuous')
         self.soc_est = pl.LpVariable.dicts('soc_est',
                                       range(0,self.number_of_samples),
-                                      lowBound = float(self.soc_min_est),
-                                      upBound = float(self.soc_max_est),
+                                      lowBound = float(self.est_soc_min),
+                                      upBound = float(self.est_soc_max),
                                       cat='Continuous')
 
 
@@ -182,19 +184,20 @@ class ModelPredictiveControl:
 
     def define_objective_funcion(self):
         self.prob += pl.lpSum([((self.p_rede[k]*self.sample_time*
-                                 self.forecast_data.loc[k,'custo_energia'])/
-                                (float(self.p_max_rede))*
+                                 self.forecast_data.loc[k,'energy_cost_imp'])/
+                                (float(self.net_pow_imp_max))*
                                 self.sample_time*
-                                (self.max_energy_cost)*
-                                self.peso_p_rede + 
-                                self.mod_dif_soc_ref_est[k]*
-                                self.peso_soc_est - 
+                                (self.energy_cost_imp_max)*
+                                self.weight_pow_net + 
+                                self.mod_dif_est_soc_ref[k]*
+                                self.weight_soc_est - 
                                 (pl.lpSum([self.soc_bike[bike][k]] 
                                            for bike in range(0,self.num_bikes)) )/
                                 (pl.lpSum([self.forecast_data.loc[k,'cx_bike_{}'.format(b)]]
                                            for b in range(0, self.num_bikes)) )*
-                                self.peso_soc_bike)
+                                self.weight_soc_bike)
                                for k in self.forecast_data.index])
+        print("Define OF")
 
 
 
@@ -204,12 +207,12 @@ class ModelPredictiveControl:
             
             # BATERIA BIKE:
             for bike in range(0, self.num_bikes):
-                self.prob += self.p_ch_bike1[bike][k] == float(self.p_max_bat_bike) * self.flag_ch_bat_bike1[bike][k]
-                self.prob += self.p_dc_bike1[bike][k] <= float(self.p_max_bat_bike) * self.flag_dc_bat_bike1[bike][k]
+                self.prob += self.bike_pow_ch_1[bike][k] == float(self.bike_pow_max) * self.flag_ch_bat_bike1[bike][k]
+                self.prob += self.p_dc_bike1[bike][k] <= float(self.bike_pow_max) * self.flag_dc_bat_bike1[bike][k]
                 self.prob += self.flag_ch_bat_bike1[bike][k] + self.flag_dc_bat_bike1[bike][k] <= 1 # simultaneity
                 
-                self.prob += self.p_ch_bike2[bike][k] <= float(self.p_max_bat_bike)/float(self.eff_conv_w) * self.flag_ch_bat_bike2[bike][k]
-                self.prob += self.p_dc_bike2[bike][k] <= float(self.p_max_bat_bike) * self.flag_dc_bat_bike2[bike][k]
+                self.prob += self.p_ch_bike2[bike][k] <= float(self.bike_pow_max)/float(self.conv_w_eff) * self.flag_ch_bat_bike2[bike][k]
+                self.prob += self.p_dc_bike2[bike][k] <= float(self.bike_pow_max) * self.flag_dc_bat_bike2[bike][k]
                 self.prob += self.flag_ch_bat_bike2[bike][k] + self.flag_dc_bat_bike2[bike][k] <= 1 # simultaneity
                 
                 # SOC
@@ -226,11 +229,11 @@ class ModelPredictiveControl:
                     self.prob += self.soc_bike[bike][k] == self.forecast_data.loc[k,'soc_bike_{bike}'.format(bike=bike)] # Leitura do protocolo Modbus
                 # Já estava conectada, então o algoritmo tem liberdade de controle
                 else:
-                    self.prob += self.soc_bike[bike][k] ==  self.soc_bike[bike][k-1] + (self.p_ch_bike1[bike][k-1] - self.p_dc_bike1[bike][k-1])*self.sample_time/self.e_total_bat_bike
+                    self.prob += self.soc_bike[bike][k] ==  self.soc_bike[bike][k-1] + (self.bike_pow_ch_1[bike][k-1] - self.p_dc_bike1[bike][k-1])*self.sample_time/self.bike_energy_max
         
                 # EFICIÊNICA Conversor Wireless
-                self.prob += self.p_ch_bike1[bike][k] == float(self.eff_conv_w) * self.p_ch_bike2[bike][k]
-                self.prob += self.p_dc_bike2[bike][k] == float(self.eff_conv_w) * self.p_dc_bike1[bike][k]
+                self.prob += self.bike_pow_ch_1[bike][k] == float(self.conv_w_eff) * self.p_ch_bike2[bike][k]
+                self.prob += self.p_dc_bike2[bike][k] == float(self.conv_w_eff) * self.p_dc_bike1[bike][k]
                 
             # Pega o soc_min_otm_bike (Sugestao do Henry)
             # if k > 0:
@@ -240,44 +243,44 @@ class ModelPredictiveControl:
             # self.prob += soc_min_otm_bike <= self.soc_bike[k]
         
             # STATIONARY BATTERY
-            self.prob += self.p_ch_bat_est[k] <= self.p_max_bat_est * self.flag_ch_bat_est[k]
-            self.prob += self.p_dc_bat_est[k] <= self.p_max_bat_est * self.flag_dc_bat_est[k]             
+            self.prob += self.p_ch_bat_est[k] <= self.est_pow_max * self.flag_ch_bat_est[k]
+            self.prob += self.p_dc_bat_est[k] <= self.est_pow_max * self.flag_dc_bat_est[k]             
             self.prob += self.flag_dc_bat_est[k] + self.flag_ch_bat_est[k] <= 1 # simultaneity
             # Calcula o módulo da distância do soc_est de sua referência
-            self.prob += self.dif_soc_ref_est[k] == self.soc_ref_est - self.soc_est[k]
-            if (self.dif_soc_ref_est[k] >= 0):
-                self.prob += self.mod_dif_soc_ref_est[k] == self.dif_soc_ref_est[k]
+            self.prob += self.dif_est_soc_ref[k] == self.est_soc_ref - self.soc_est[k]
+            if (self.dif_est_soc_ref[k] >= 0):
+                self.prob += self.mod_dif_est_soc_ref[k] == self.dif_est_soc_ref[k]
             else:
-                self.prob += self.mod_dif_soc_ref_est[k] == - self.dif_soc_ref_est[k]
+                self.prob += self.mod_dif_est_soc_ref[k] == - self.dif_est_soc_ref[k]
                 
             # SOC
             if k == 0:
-                self.prob += self.soc_est[k] == self.soc_ini_est
+                self.prob += self.soc_est[k] == self.est_soc_ini
             else:
                 self.prob += self.soc_est[k] ==  self.soc_est[k-1] + (self.p_ch_bat_est[k-1] 
-                                                        - self.p_dc_bat_est[k-1])*self.sample_time/self.e_total_bat_est
+                                                        - self.p_dc_bat_est[k-1])*self.sample_time/self.est_energy_max
             
             # REDE
-            self.prob += self.p_rede[k] == (self.p_rede_imp_ac[k] - self.p_rede_exp_ac[k])
+            self.prob += self.p_rede[k] == (self.net_pow_ac_imp[k] - self.net_pow_ac_exp[k])
             # IMPORTAÇÃO E EXPORTAÇÃO DA REDE - PARTE AC
-            self.prob += self.p_rede_imp_ac[k] <= self.p_max_inv_ac * self.flag_rede_imp_ac[k]
-            self.prob += self.p_rede_exp_ac[k] <= self.p_max_inv_ac * self.flag_rede_exp_ac[k]
-            self.prob += self.flag_rede_imp_ac[k] + self.flag_rede_exp_ac[k] <= 1 # simultaneity
+            self.prob += self.net_pow_ac_imp[k] <= self.inv_ac_pow_max * self.flag_net_ac_imp[k]
+            self.prob += self.net_pow_ac_exp[k] <= self.inv_ac_pow_max * self.flag_net_ac_exp[k]
+            self.prob += self.flag_net_ac_imp[k] + self.flag_net_ac_exp[k] <= 1 # simultaneity
             # IMPORTAÇÃO E EXPORTAÇÃO DA REDE - PARTE DC
-            self.prob += self.p_rede_imp_dc[k] <= self.p_max_inv_ac * self.flag_rede_imp_dc[k]
-            self.prob += self.p_rede_exp_dc[k] <= self.p_max_inv_ac * self.flag_rede_exp_dc[k]
-            self.prob += self.flag_rede_imp_dc[k] + self.flag_rede_exp_dc[k] <= 1 # simultaneity
+            self.prob += self.net_pow_dc_imp[k] <= self.inv_ac_pow_max * self.flag_net_dc_imp[k]
+            self.prob += self.net_pow_dc_exp[k] <= self.inv_ac_pow_max * self.flag_net_dc_exp[k]
+            self.prob += self.flag_net_dc_imp[k] + self.flag_net_dc_exp[k] <= 1 # simultaneity
         
             # EFICIÊNICA Conversor AC/DC
-            self.prob += self.p_rede_exp_ac[k] == self.eff_conv_ac * self.p_rede_exp_dc[k]
-            self.prob += self.p_rede_imp_dc[k] == self.eff_conv_ac * self.p_rede_imp_ac[k]
+            self.prob += self.net_pow_ac_exp[k] == self.conv_ac_eff * self.net_pow_dc_exp[k]
+            self.prob += self.net_pow_dc_imp[k] == self.conv_ac_eff * self.net_pow_ac_imp[k]
         
             # BALANÇO DE POTÊNCIA NO BARRAMENTO DC (Não considera a bat estacionária)
             self.prob += pl.lpSum([self.p_dc_bike2[bike][k]] for bike in range(0, self.num_bikes)) 
-            + self.forecast_data.loc[k,'potencia_PV'] 
-            + self.p_rede_imp_dc[k] 
+            + self.forecast_data.loc[k,'pv_power'] 
+            + self.net_pow_dc_imp[k] 
             + self.p_dc_bat_est[k] == pl.lpSum([self.p_ch_bike2[bike][k]] for bike in range(0,self.num_bikes)) 
-            + self.p_rede_exp_dc[k] + self.p_ch_bat_est[k]
+            + self.net_pow_dc_exp[k] + self.p_ch_bat_est[k]
             
     
     
@@ -294,7 +297,7 @@ class ModelPredictiveControl:
         local_previous_data = []
         for p in range(0, 144):
             local_previous_data.append([0])
-            local_previous_data[p] = self.previous_data.loc[p, 'potencia_PV']
+            local_previous_data[p] = self.previous_data.loc[p, 'pv_power']
         # DO THE TRANSPOSE OF THE ARRAY
         local_previous_data = np.array([local_previous_data],dtype=str).T
         # LOAD THE NEURAL NETWORK STRUCTURE
@@ -321,7 +324,7 @@ class ModelPredictiveControl:
         # DEIXAR A PREVISÃO EM kW:
         forecast_pv = scaler.inverse_transform(forecast_pv).T
         
-        self.forecast_data['potencia_PV'] = pd.DataFrame(forecast_pv)
+        self.forecast_data['pv_power'] = pd.DataFrame(forecast_pv)
 
 
 
@@ -332,7 +335,26 @@ class ModelPredictiveControl:
         self.previous_data[0:self.number_of_samples-2] = self.previous_data[0+1:self.number_of_samples-1] # [ ] Check later
         
         # UPDATE THE LAST SAMPLE
-        self.previous_data[self.number_of_samples] = measurement[1]
+        self.previous_data[self.number_of_samples-1] = measurement[1]
+       
+        
+        self.previous_data[self.number_of_samples-1,"pv_power"] = self.previous_data.loc[self.number_of_samples-1,"pv_power"]/1000
+        self.previous_data[self.number_of_samples-1,"energy_cost_imp"] = self.previous_data.loc[self.number_of_samples-1,"energy_cost_imp"]/100
+        self.previous_data[self.number_of_samples-1,"energy_cost_exp"] = self.previous_data.loc[self.number_of_samples-1,"energy_cost_exp"]/100
+        self.previous_data[self.number_of_samples-1,"soc_bike_0"] = self.previous_data.loc[self.number_of_samples-1,"soc_bike_0"]/100
+        self.previous_data[self.number_of_samples-1,"soc_bike_1"] = self.previous_data.loc[self.number_of_samples-1,"soc_bike_1"]/100
+        self.previous_data[self.number_of_samples-1,"soc_bike_2"] = self.previous_data.loc[self.number_of_samples-1,"soc_bike_2"]/100
+        self.previous_data[self.number_of_samples-1,"soc_bike_3"] = self.previous_data.loc[self.number_of_samples-1,"soc_bike_3"]/100
+        self.previous_data[self.number_of_samples-1,"soc_bike_4"] = self.previous_data.loc[self.number_of_samples-1,"soc_bike_4"]/100
+        self.previous_data[self.number_of_samples-1,"soc_bike_5"] = self.previous_data.loc[self.number_of_samples-1,"soc_bike_5"]/100
+        self.previous_data[self.number_of_samples-1,"soc_bike_6"] = self.previous_data.loc[self.number_of_samples-1,"soc_bike_9"]/100
+        self.previous_data[self.number_of_samples-1,"soc_bike_7"] = self.previous_data.loc[self.number_of_samples-1,"soc_bike_7"]/100
+        self.previous_data[self.number_of_samples-1,"soc_bike_8"] = self.previous_data.loc[self.number_of_samples-1,"soc_bike_8"]/100
+        self.previous_data[self.number_of_samples-1,"soc_bike_9"] = self.previous_data.loc[self.number_of_samples-1,"soc_bike_9"]/100
+        
+        # print(self.previous_data.loc[self.number_of_samples-1])
+
+        
 
 
 
@@ -364,20 +386,20 @@ class ModelPredictiveControl:
         p_dc_bat_est_res = [0.0] * self.number_of_samples
         p_pv_res = [0.0] * self.number_of_samples
         soc_est_res = [0.0] * self.number_of_samples
-        custo_energia = [0.0] * self.number_of_samples
+        energy_cost_imp = [0.0] * self.number_of_samples
         mod_est = [0.0] * self.number_of_samples
         ch_dc_bike_res = np.zeros((self.num_bikes, self.number_of_samples))
         soc_bike_res = np.zeros((self.num_bikes, self.number_of_samples))
         
         for k in time_array:
             p_rede_res[k] = - self.p_rede[k].varValue
-            p_pv_res[k] = self.previous_data.loc[k,'potencia_PV']
-            custo_energia[k] = self.previous_data.loc[k,'custo_energia']
+            p_pv_res[k] = self.previous_data.loc[k,'pv_power']
+            energy_cost_imp[k] = self.previous_data.loc[k,'energy_cost_imp']
             soc_est_res[k] = self.soc_est[k].varValue
-            mod_est[k] = self.mod_dif_soc_ref_est[k].varValue 
+            mod_est[k] = self.mod_dif_est_soc_ref[k].varValue 
             
             for bike in range(0,self.num_bikes):
-                ch_dc_bike_res[bike][k] = self.p_ch_bike1[bike][k].varValue - self.p_dc_bike1[bike][k].varValue
+                ch_dc_bike_res[bike][k] = self.bike_pow_ch_1[bike][k].varValue - self.p_dc_bike1[bike][k].varValue
                 soc_bike_res[bike][k] = self.soc_bike[bike][k].varValue
             if k >= 1:
                 somatorio_p_rede[k] = (somatorio_p_rede[k-1] + p_rede_res[k])
@@ -387,8 +409,8 @@ class ModelPredictiveControl:
         
         ''' p_rede e p_pv '''
         num_graf = 0
-        # fig.suptitle('Penalidades: Bike {peso_soc_bike}, Est.: {peso_soc_est}, p_rede = {peso_p_rede} \n Efic. conv. wireless = {ef}'.
-        #              format(peso_soc_bike=peso_soc_bike,peso_soc_est=peso_soc_est,peso_p_rede=peso_p_rede,ef=eff_conv_w),fontsize=10)
+        # fig.suptitle('Penalidades: Bike {weight_soc_bike}, Est.: {weight_soc_est}, p_rede = {weight_pow_net} \n Efic. conv. wireless = {ef}'.
+        #              format(weight_soc_bike=weight_soc_bike,weight_soc_est=weight_soc_est,weight_pow_net=weight_pow_net,ef=conv_w_eff),fontsize=10)
         axs1[num_graf].step(time_array/6, p_rede_res,c='#d62728',label='p_rede [kW] inversa')
         axs1[num_graf].step(time_array/6, p_pv_res,c='c',label='p_pv [kW]')
         axs1[num_graf].legend(loc='upper right',prop={'size': 7})
@@ -415,7 +437,7 @@ class ModelPredictiveControl:
         num_graf +=1
         # axs1[num_graf].step(time_array/6, ch_dc_bike,c='#1f77b4',label='ch_dc_bike')
         # axs1[num_graf].step(time_array/6, soc_est_res,c='#1f77b4',label='soc_est')
-        axs1[num_graf].step(time_array/6, custo_energia,c='C1',label='custo_energia [R$/(kWh)]')
+        axs1[num_graf].step(time_array/6, energy_cost_imp,c='C1',label='energy_cost_imp [R$/(kWh)]')
         axs1[num_graf].legend(loc='lower center',prop={'size': 7})
         axs1[num_graf].set_ylabel('Amplitude')
         # axs1[1].set_xticks(time_array)
@@ -437,5 +459,5 @@ class ModelPredictiveControl:
 
 
 if __name__ == '__main__':
-    mpc = ModelPredictiveControl("configs_mpc.json","dados_entrada_retirando_bikes.csv","control_signals.csv")
+    mpc = ModelPredictiveControl("configs_mpc.json","dados_entrada.csv","control_signals.csv")
     
