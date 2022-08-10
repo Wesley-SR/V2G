@@ -17,7 +17,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 ''' INPUT DATA '''
-dados_entrada = pd.read_csv('dados_entrada_10_min.csv', index_col=['tempo'],sep=";")
+dados_entrada = pd.read_csv('dados_entrada_15_min.csv', index_col=['tempo'],sep=";")
 
 ''' ------- DEFINIÇÃO DO PROBLEMA ------- '''
 
@@ -33,7 +33,7 @@ solver = pl.SCIP_CMD()
 time_array = dados_entrada.index
 
 ''' ------- PARÂMETROS ------- ''' 
-ts = 0.16667 # Intervalo de tempo (0.16667h = 10 min)
+ts = 0.25 # Intervalo de tempo (0.25h = 15 min)
 num_amostras = time_array.size
 # REDE
 p_max_rede_imp = 20
@@ -338,24 +338,24 @@ fig1,axs1 = plt.subplots(3)
 # fig1.suptitle('Penalidades: Bike {peso_soc_bike}, Est.: {peso_soc_est}, p_rede = {peso_p_rede} \n Efic. conv. wireless = {ef}'.
 #              format(peso_soc_bike=peso_soc_bike,peso_soc_est=peso_soc_est,peso_p_rede=peso_p_rede,ef=eff_conv_w),fontsize=10)
 # Primeiro subplot
-# axs1[num_graf].step(time_array/6, p_rede_res,c='b',label='p_rede [kW]')
-axs1[num_graf].step(time_array/6, p_rede_imp_res,c='g',label='p_rede_imp [kW]')
-axs1[num_graf].step(time_array/6, p_rede_exp_res,c='b',label='p_rede_exp [kW]')
-axs1[num_graf].step(time_array/6, p_pv_res,c='C1',linestyle='dashed',label='p_pv [kW]')
+# axs1[num_graf].step(time_array/4, p_rede_res,c='b',label='p_rede [kW]')
+axs1[num_graf].step(time_array/4, p_rede_imp_res,c='g',label='p_rede_imp [kW]')
+axs1[num_graf].step(time_array/4, p_rede_exp_res,c='b',label='p_rede_exp [kW]')
+axs1[num_graf].step(time_array/4, p_pv_res,c='C1',linestyle='dashed',label='p_pv [kW]')
 axs1[num_graf].legend(loc='upper left',prop={'size': 7})
 # axs1[0].set_xticks(time_array)
 axs1[num_graf].grid()
 axs1[num_graf].set_ylabel('Amplitude')
 axs1[num_graf].tick_params(axis='x', which='major', labelsize=7)
-axs1[num_graf].tick_params(axis='y', which='major', labelsize=10)
-axs1[num_graf].set_yticks([0,10,20])
+axs1[num_graf].tick_params(axis='y', which='major', labelsize=8)
+axs1[num_graf].set_yticks([min(p_pv_res)*2,0,0.5,max(p_pv_res)/2,max(p_pv_res)])
 axs1[num_graf].set_xticks([0,5,6,8,10,12,16,17,18,20,21,22,25])
 num_graf +=1
 # Segundo subplot
-axs1[num_graf].step(time_array/6, soc_bike_res,c='g',label='soc_bike')
-# axs1[num_graf].step(time_array/6, ch_dc_bike,c='#1f77b4',label='ch_dc_bike')
-axs1[num_graf].step(time_array/6, soc_est_res,c='#1f77b4',label='soc_est')
-axs1[num_graf].step(time_array/6, custo_energia_imp_res,c='C1',label='custo_energia_imp_res [R$/(kWh)]')
+axs1[num_graf].step(time_array/4, soc_bike_res,c='g',label='soc_bike')
+# axs1[num_graf].step(time_array/4, ch_dc_bike,c='#1f77b4',label='ch_dc_bike')
+axs1[num_graf].step(time_array/4, soc_est_res,c='#1f77b4',label='soc_est')
+axs1[num_graf].step(time_array/4, custo_energia_imp_res,c='C1',label='custo_energia_imp_res [R$/(kWh)]')
 axs1[num_graf].legend(loc='lower center',prop={'size': 7})
 # axs1[1].set_xticks(time_array)
 axs1[num_graf].grid()
@@ -366,7 +366,7 @@ axs1[num_graf].set_xticks([0,5,6,8,10,12,16,17,18,20,21,22,25])
 
 num_graf +=1
 # Terceiro subplot
-axs1[num_graf].step(time_array/6, somatorio_p_rede,c='#d62728',label='somatorio_p_rede [kWh]')
+axs1[num_graf].step(time_array/4, somatorio_p_rede,c='#d62728',label='somatorio_p_rede [kWh]')
 axs1[num_graf].legend(loc='lower right',prop={'size': 7})
 axs1[num_graf].tick_params(axis='y', which='major', labelsize=8)
 axs1[num_graf].grid()
@@ -376,45 +376,45 @@ axs1[num_graf].set_xticks([0,5,6,8,10,12,16,17,18,20,21,22,25])
 
 
 
-''' ---------------- GRÁFICO 2 --------------- '''
-''' Bateria Bike [kWh] '''
-num_graf = 0
-fig2,axs2 = plt.subplots(3)
-axs2[num_graf].step(time_array/6, p_ch_bike1_res,c='g',label='p_ch_bike1_res [kW]')
-axs2[num_graf].step(time_array/6, p_dc_bike1_res,c='r',label='p_dc_bike1_res [kW]')
-axs2[num_graf].legend(loc='upper left',prop={'size': 7})
+# ''' ---------------- GRÁFICO 2 --------------- '''
+# ''' Bateria Bike [kWh] '''
+# num_graf = 0
+# fig2,axs2 = plt.subplots(3)
+# axs2[num_graf].step(time_array/4, p_ch_bike1_res,c='g',label='p_ch_bike1_res [kW]')
+# axs2[num_graf].step(time_array/4, p_dc_bike1_res,c='r',label='p_dc_bike1_res [kW]')
+# axs2[num_graf].legend(loc='upper left',prop={'size': 7})
 
-# axs1[0].set_xticks(time_array)
-axs2[num_graf].grid()
-axs2[num_graf].set_ylabel('Amplitude')
-axs2[num_graf].tick_params(axis='x', which='major', labelsize=7)
-axs2[num_graf].tick_params(axis='y', which='major', labelsize=10)
-axs2[num_graf].set_yticks([-0.7,-0.5,0,0.5,0.7])
-axs2[num_graf].set_xticks([0,5,6,8,10,12,16,17,18,20,21,22,25])
+# # axs1[0].set_xticks(time_array)
+# axs2[num_graf].grid()
+# axs2[num_graf].set_ylabel('Amplitude')
+# axs2[num_graf].tick_params(axis='x', which='major', labelsize=7)
+# axs2[num_graf].tick_params(axis='y', which='major', labelsize=10)
+# axs2[num_graf].set_yticks([-0.7,-0.5,0,0.5,0.7])
+# axs2[num_graf].set_xticks([0,5,6,8,10,12,16,17,18,20,21,22,25])
 
-''' Flags '''
-num_graf +=1
-axs2[num_graf].step(time_array/6, flag_rede_imp_ac_res,c='r',linestyle='dashed',label='flag_rede_imp_ac_res')
-axs2[num_graf].step(time_array/6, flag_rede_exp_ac_res,c='g',label='flag_rede_exp_ac_res')
-axs2[num_graf].legend(loc='lower center',prop={'size': 7})
+# ''' Flags '''
+# num_graf +=1
+# axs2[num_graf].step(time_array/4, flag_rede_imp_ac_res,c='r',linestyle='dashed',label='flag_rede_imp_ac_res')
+# axs2[num_graf].step(time_array/4, flag_rede_exp_ac_res,c='g',label='flag_rede_exp_ac_res')
+# axs2[num_graf].legend(loc='lower center',prop={'size': 7})
 
-axs2[num_graf].grid()
-axs2[num_graf].tick_params(axis='x', which='major', labelsize=7)
-axs2[num_graf].tick_params(axis='y', which='major', labelsize=10)
-axs2[num_graf].set_yticks([0,1])
-axs2[num_graf].set_xticks([0,5,6,8,10,12,16,17,18,20,21,22,25])
+# axs2[num_graf].grid()
+# axs2[num_graf].tick_params(axis='x', which='major', labelsize=7)
+# axs2[num_graf].tick_params(axis='y', which='major', labelsize=10)
+# axs2[num_graf].set_yticks([0,1])
+# axs2[num_graf].set_xticks([0,5,6,8,10,12,16,17,18,20,21,22,25])
 
 
-num_graf +=1
-axs2[num_graf].step(time_array/6, flag_ch_bat_bike2_res,c='b',linestyle='dashed',label='flag_ch_bat_bike2_res')
-axs2[num_graf].step(time_array/6, flag_dc_bat_bike2_res,c='C1',label='flag_dc_bat_bike2_res')
-axs2[num_graf].legend(loc='lower right',prop={'size': 7})
+# num_graf +=1
+# axs2[num_graf].step(time_array/4, flag_ch_bat_bike2_res,c='b',linestyle='dashed',label='flag_ch_bat_bike2_res')
+# axs2[num_graf].step(time_array/4, flag_dc_bat_bike2_res,c='C1',label='flag_dc_bat_bike2_res')
+# axs2[num_graf].legend(loc='lower right',prop={'size': 7})
 
-axs2[num_graf].grid()
-axs2[num_graf].tick_params(axis='x', which='major', labelsize=7)
-axs2[num_graf].tick_params(axis='y', which='major', labelsize=10)
-axs2[num_graf].set_yticks([0,1])
-axs2[num_graf].set_xticks([0,5,6,8,10,12,16,17,18,20,21,22,25])
+# axs2[num_graf].grid()
+# axs2[num_graf].tick_params(axis='x', which='major', labelsize=7)
+# axs2[num_graf].tick_params(axis='y', which='major', labelsize=10)
+# axs2[num_graf].set_yticks([0,1])
+# axs2[num_graf].set_xticks([0,5,6,8,10,12,16,17,18,20,21,22,25])
 
 
 
@@ -425,10 +425,10 @@ axs2[num_graf].set_xticks([0,5,6,8,10,12,16,17,18,20,21,22,25])
 # # fig1.suptitle('Penalidades: Bike {peso_soc_bike}, Est.: {peso_soc_est}, p_rede = {peso_p_rede} \n Efic. conv. wireless = {ef}'.
 # #              format(peso_soc_bike=peso_soc_bike,peso_soc_est=peso_soc_est,peso_p_rede=peso_p_rede,ef=eff_conv_w),fontsize=10)
 # # Primeiro subplot
-# # axs1[num_graf].step(time_array/6, p_rede_res,c='b',label='p_rede [kW]')
-# plt.step(time_array/6, p_rede_imp_res,c='g',label='p_rede_imp [kW]')
-# plt.step(time_array/6, p_rede_exp_res,c='b',label='p_rede_exp [kW]')
-# plt.step(time_array/6, p_pv_res,c='C1',linestyle='dashed',label='p_pv [kW]')
+# # axs1[num_graf].step(time_array/4, p_rede_res,c='b',label='p_rede [kW]')
+# plt.step(time_array/4, p_rede_imp_res,c='g',label='p_rede_imp [kW]')
+# plt.step(time_array/4, p_rede_exp_res,c='b',label='p_rede_exp [kW]')
+# plt.step(time_array/4, p_pv_res,c='C1',linestyle='dashed',label='p_pv [kW]')
 # plt.legend(loc='upper left',prop={'size': 7})
 # # axs3[0].set_xticks(time_array)
 # plt.grid()
@@ -439,12 +439,21 @@ axs2[num_graf].set_xticks([0,5,6,8,10,12,16,17,18,20,21,22,25])
 # plt.set_xticks([0,5,6,8,10,12,16,17,18,20,21,22,25])
 
 
-# name_figure = "imagens_testes/220419_penalidade_soc_{}.png".format(peso_soc_bike)
-# plt.savefig(name_figure, format="png", dpi=400)
+name_figure = "220810.png"
+plt.savefig(name_figure, format="png", dpi=400)
 plt.show()
 
 
 
 ''' WRITE RESULTS IN SCV'''
-p_rede_df = pd.DataFrame(p_rede_res, columns = ['p_rede_ref'])
-p_rede_df.to_csv("p_rede_ref.csv", index=False)
+# p_rede_df = pd.DataFrame(p_rede_res)
+# p_rede_df.to_csv("p_rede_ref.csv", index=False)
+
+result = {
+    'p_rede_ref' : p_rede_res,
+    'p_rede_imp_ref' : p_rede_imp_res,
+    'p_rede_exp_ref' : p_rede_exp_res
+    }
+
+df = pd.DataFrame(result)
+df.to_csv("p_rede_ref.csv", index=False,sep=';')
